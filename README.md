@@ -18,6 +18,38 @@ this.panelForm.patchValue({
     });
 
 
+updateTimings(eventData: any) {
+  // Convert start and end times to Date objects
+  const startDate = new Date(eventData.start);
+  const endDate = new Date(eventData.end);
+
+  // Function to format the date in "yyyy-MM-ddTHH:mm:ss" format
+  const formatDate = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');  // Months are zero-based
+    const day = date.getDate().toString().padStart(2, '0');
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    const seconds = date.getSeconds().toString().padStart(2, '0');
+
+    return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+  };
+
+  // Format the start and end time
+  const formattedStartTime = formatDate(startDate);
+  const formattedEndTime = formatDate(endDate);
+
+  // Now patch the form with the formatted values
+  this.panelForm.patchValue({
+    timings: { 
+      startTime: formattedStartTime, 
+      endTime: formattedEndTime 
+    },
+  });
+}
+
+
+
 panel-schedule-dialog.component.html
 
 <div class="col-lg-12 col-sm-12">
