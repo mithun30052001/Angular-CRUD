@@ -1,58 +1,63 @@
 https://teams.microsoft.com/l/meetup-join/19%3ameeting_ODliN2VjZjktZjM2MS00OGQ4LWFhMzUtZjAwNTJkMTRkY2Y4%40thread.v2/0?context=%7b%22Tid%22%3a%22f6fb95f2-bd20-41a4-b19a-c7fcf96d09a7%22%2c%22Oid%22%3a%2238c62280-1dc6-4ce5-b5b4-8a068650cb44%22%7d
 
-<div class="app-icon-overlay" *ngIf="isHovered" (mouseover)="isHovered=true" (mouseleave)="isHovered=false">
-        <button class="event-btn" (click)="triggerFileInput()">
-          <app-icon icon="upload_ic" title="Upload Profile" />
-        </button>
-      </div>
+profile-component.html
+<div class="row d-flex align-items-center">
+  <div class="col-sm-4 col-lg-2 col-3">
+    <div class="profile-avator" style="position: relative;">
+      <!-- Profile Image -->
+      <img src="assets/images/profile-pic.png" alt="" class="img-fluid" />
+      <!-- Edit Icon as overlay -->
+      <button class="icon-button edit-icon-overlay" (click)="onEditIconClick()">
+        <app-icon icon="edit_ic-pencil-icon" title="Edit Profile Picture"></app-icon>
+      </button>
+    </div>
+  </div>
+  <div class="col-sm-7 col-lg-9 col-8">
+    <div class="profile-left-heading">
+      <p class="">{{ profile.fullName }}</p>
+      <p class="">{{ profile.mobile }}</p>
+      <p class="mail-color">{{ profile.email }}</p>
+    </div>
+  </div>
+  <div class="col-sm-1 col-lg-1 col-1 d-flex justify-content-end">
+    <div class="profile-heading-edit">
+      <button class="icon-button" (click)="quickEdit()">
+        <app-icon icon="edit_ic" title="Quick edit"></app-icon>
+      </button>
+    </div>
+  </div>
+</div>
 
-      <!-- Hidden File Input -->
-      <input type="file" #fileInput style="display: none" (change)="onFileSelected($event)" />
-
-profile.scss
+profile-component.scss
 
 .profile-avator {
   position: relative;
-  width: 100px; /* Adjust as needed */
-  height: 100px; /* Adjust as needed */
-  border-radius: 50%;
-  overflow: hidden;
+  width: 100px;  // Adjust the size as necessary
+  height: 100px; // Adjust the size as necessary
 }
 
-.app-icon-overlay {
+.edit-icon-overlay {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
-  opacity: 0;
-  transition: opacity 0.3s ease-in-out;
-}
-
-.profile-avator:hover .app-icon-overlay {
-  opacity: 1;
-}
-
-.event-btn {
-  background-color: transparent;
+  top: 5px;
+  left: 5px;
+  background: rgba(0, 0, 0, 0.5); // Optional: Add a background for better visibility
   border: none;
+  border-radius: 50%;
+  padding: 5px;
   cursor: pointer;
 }
 
-.event-btn app-icon {
-  color: white;
-  font-size: 24px;
+.edit-icon-overlay app-icon {
+  color: white;  // Set icon color to make it visible
 }
 
 profile.component.ts
 
 import { Component, EventEmitter, Input, OnInit, Output, ViewChild } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
-import { MatDialogConfig } from '@angular/material/dialog';
+import { MatDialogRef } from '@angular/material/dialog';
+import { ProfileService } from '@/src/app/shared/services/profile.service';
+import { MatDialog } from '@angular/material/dialog';
 
 @Component({
   selector: 'app-profile',
@@ -60,62 +65,175 @@ import { MatDialogConfig } from '@angular/material/dialog';
   styleUrls: ['./profile.component.scss'],
 })
 export class ProfileComponent implements OnInit {
-  @ViewChild('fileInput', { static: false }) fileInput: any;
-  
-  profileImage: File | null = null;
-  imagePreviewUrl: string | ArrayBuffer | null = null;
-  isHovered: boolean = false;
+  selectedFile: File | null = null;
+
+  // Create a dialog reference for the modal
+  dialogRef: MatDialogRef<any> | null = null;
 
   constructor(private dialog: MatDialog) {}
 
-  ngOnInit(): void {
-    // Initial setup logic if needed
-  }
+  ngOnInit() {}
 
-  // Trigger the file input when the upload icon is clicked
-  triggerFileInput() {
-    this.fileInput.nativeElement.click();
-  }
+  // Open the file selector when the icon is clicked
+  onEditIconClick() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';  // Only accept images
+    input.click();
 
-  // Handle file selection
-  onFileSelected(event: Event) {
-    const input = event.target as HTMLInputElement;
-    if (input?.files?.[0]) {
-      this.profileImage = input.files[0];
-      const reader = new FileReader();
-      reader.onload = () => {
-        this.imagePreviewUrl = reader.result;
-        this.openImagePreviewModal();
-      };
-      reader.readAsDataURL(this.profileImage);
-    }
-  }
-
-  // Open modal to preview and upload image
-  openImagePreviewModal() {
-    const dialogConfig = new MatDialogConfig();
-    dialogConfig.data = {
-      imageUrl: this.imagePreviewUrl,
-      onRemove: this.removeImage.bind(this),
-      onUpload: this.uploadImage.bind(this),
+    input.onchange = (event: Event) => {
+      const file = (event.target as HTMLInputElement).files?.[0];
+      if (file) {
+        this.selectedFile = file;
+        this.openPreviewModal(file);
+      }
     };
-    const dialogRef = this.dialog.open(ImagePreviewDialogComponent, dialogConfig);
   }
 
-  // Remove the selected image
-  removeImage() {
-    this.profileImage = null;
-    this.imagePreviewUrl = null;
-  }
+  // Open a modal to preview the selected image
+  openPreviewModal(file: File) {
+    // Use Angular Material Dialog to show a modal with the file preview
+    const dialogRef = this.dialog.open(FilePreviewDialogComponent, {
+      data: { file },
+      width: '400px',
+    });
 
-  // Upload the selected image (you can add your upload logic here)
-  uploadImage() {
-    if (this.profileImage) {
-      // Logic to upload the image to server or handle it as needed
-      console.log('Uploading image:', this.profileImage);
-    }
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        // Handle file save if needed (e.g., upload to the server)
+      }
+    });
   }
 }
+
+
+
+Generate component
+
+ng generate component FilePreviewDialog
+
+
+
+File-preview-dialog.ts
+
+
+import { Component, Inject } from '@angular/core';
+import { MAT_DIALOG_DATA } from '@angular/material/dialog';
+
+@Component({
+  selector: 'app-file-preview-dialog',
+  template: `
+    <h2 mat-dialog-title>File Preview</h2>
+    <mat-dialog-content>
+      <div *ngIf="data.file">
+        <img [src]="imageUrl" alt="Selected Image" class="img-fluid" />
+      </div>
+    </mat-dialog-content>
+    <mat-dialog-actions>
+      <button mat-button (click)="onCancel()">Cancel</button>
+      <button mat-button (click)="onSave()">Save</button>
+    </mat-dialog-actions>
+  `,
+  styles: [
+    `
+      img {
+        max-width: 100%;
+        max-height: 300px;
+        object-fit: cover;
+      }
+    `,
+  ],
+})
+export class FilePreviewDialogComponent {
+  imageUrl: string;
+
+  constructor(@Inject(MAT_DIALOG_DATA) public data: { file: File }) {
+    this.imageUrl = URL.createObjectURL(data.file);
+  }
+
+  onCancel() {
+    // Close the modal without doing anything
+  }
+
+  onSave() {
+    // Logic to save the file, e.g., upload to a server
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+profile.component.ts
+
+import { Component, EventEmitter, Input, OnInit, Output, ViewChild } from '@angular/core';
+import { MatDialog } from '@angular/material/dialog';
+import { MatDialogRef } from '@angular/material/dialog';
+import { ProfileService } from '@/src/app/shared/services/profile.service';
+import { MatDialog } from '@angular/material/dialog';
+
+@Component({
+  selector: 'app-profile',
+  templateUrl: './profile.component.html',
+  styleUrls: ['./profile.component.scss'],
+})
+export class ProfileComponent implements OnInit {
+  selectedFile: File | null = null;
+
+  // Create a dialog reference for the modal
+  dialogRef: MatDialogRef<any> | null = null;
+
+  constructor(private dialog: MatDialog) {}
+
+  ngOnInit() {}
+
+  // Open the file selector when the icon is clicked
+  onEditIconClick() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';  // Only accept images
+    input.click();
+
+    input.onchange = (event: Event) => {
+      const file = (event.target as HTMLInputElement).files?.[0];
+      if (file) {
+        this.selectedFile = file;
+        this.openPreviewModal(file);
+      }
+    };
+  }
+
+  // Open a modal to preview the selected image
+  openPreviewModal(file: File) {
+    // Use Angular Material Dialog to show a modal with the file preview
+    const dialogRef = this.dialog.open(FilePreviewDialogComponent, {
+      data: { file },
+      width: '400px',
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        // Handle file save if needed (e.g., upload to the server)
+      }
+    });
+  }
+}
+
+
 
 
 
