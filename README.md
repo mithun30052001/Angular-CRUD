@@ -244,11 +244,7 @@ export class ProfileComponent
             firstName: this.profile.firstName,
             lastName: this.profile.lastName,
           },
-          // fitment: {
-          //   id,
-          //   lob: res?.['workExperienceDetails']?.lob,
-          //   ...res?.['fitmentDetails'],
-          // },
+          
           education: { id: id, educationDetails: res?.['educationDetails'] },
           work: { id, ...res?.['workExperienceDetails'] },
           workExp: { id, workDetails: res?.['workDetails'] },
@@ -288,14 +284,7 @@ profile-component.html profile image div
       <div class="col-sm-4 col-lg-2 col-3">
         <div class="profile-avator">
           <img src="assets/images/profile-pic.png" alt="" class="img-fluid" />
-          <!-- <div class="overlay">
-            <img
-              aria-hidden="true"
-              src="assets/images/profile-edit-icon.svg"
-              alt="edit profile"
-            />
-            <p>Upload</p>
-          </div> -->
+         
         </div>
       </div>
       <div class="col-sm-7 col-lg-9 col-8">
