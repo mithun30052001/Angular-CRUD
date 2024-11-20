@@ -1,5 +1,55 @@
 https://teams.microsoft.com/l/meetup-join/19%3ameeting_ODliN2VjZjktZjM2MS00OGQ4LWFhMzUtZjAwNTJkMTRkY2Y4%40thread.v2/0?context=%7b%22Tid%22%3a%22f6fb95f2-bd20-41a4-b19a-c7fcf96d09a7%22%2c%22Oid%22%3a%2238c62280-1dc6-4ce5-b5b4-8a068650cb44%22%7d
 
+<div class="app-icon-overlay" *ngIf="isHovered" (mouseover)="isHovered=true" (mouseleave)="isHovered=false">
+        <button class="event-btn" (click)="triggerFileInput()">
+          <app-icon icon="upload_ic" title="Upload Profile" />
+        </button>
+      </div>
+
+      <!-- Hidden File Input -->
+      <input type="file" #fileInput style="display: none" (change)="onFileSelected($event)" />
+
+profile.scss
+
+.profile-avator {
+  position: relative;
+  width: 100px; /* Adjust as needed */
+  height: 100px; /* Adjust as needed */
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.app-icon-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+}
+
+.profile-avator:hover .app-icon-overlay {
+  opacity: 1;
+}
+
+.event-btn {
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.event-btn app-icon {
+  color: white;
+  font-size: 24px;
+}
+
+
+
 app-icon
 <button class="event-btn" (click)="openEditEvent()">
     <app-icon icon="edit_ic"></app-icon>
