@@ -5,194 +5,313 @@ app-icon
     <app-icon icon="edit_ic"></app-icon>
 </button>
 
-Profile div in header-component.html
- <div class="col-sm-4 col-md-4 col-lg-3">
-            <div class="profile float-end">
-              <button
-                title="Account"
-                mat-button
-                [matMenuTriggerFor]="belowMenu"
-                (click)="getProfile()"
-                class="profile-btn border-0"
-              >
-                <div class="refer-buddy-section">
-                  <div>
-                    <img
-                      class="profile-btn-image"
-                      src="assets/images/profile-pic.png"
-                      alt=""
-                      class="img-fluid"
-                    />
-                  </div>
-                  <div class="profile-text">Account</div>
-                </div>
-              </button>
-              <mat-menu #belowMenu="matMenu" yPosition="below" class="myMenu">
-                <div
-                  aria-hidden="true"
-                  class="logout-menu"
-                  (click)="$event.stopPropagation()"
-                >
-                  <div class="avator-size">
-                    <img src="assets/images/profile-pic.png" alt="" />
-                  </div>
-                  <h5>{{ profileRecord.fullName }}</h5>
-                  <p>{{ profileRecord.email }}</p>
-                  <button
-                    title="Sign Out"
-                    mat-raised-button
-                    class="top-gap-1 logout-button"
-                    (click)="logout()"
-                  >
-                    <div class="logout-text">
-                      <app-icon icon="sign_out"></app-icon>
-                      <div class="signOut-text">Sign Out</div>
-                    </div>
-                  </button>
-                </div>
-              </mat-menu>
-            </div>
-          </div>
+profile.component.ts
 
-header-component.ts
-
-import { AuthService } from '@/src/app/shared/services/auth.service';
-import { ProfileService } from '@/src/app/shared/services/profile.service';
 import {
-  checkCandidateAccess,
-  checkEmployeeAccess,
-  checkHrAccess,
-  checkVendorAccess,
-  checkPanelAccess,
-} from '@/src/app/shared/utils/utils';
-import { MediaMatcher } from '@angular/cdk/layout';
-import { Component, Input, OnInit } from '@angular/core';
-import { MatDialog } from '@angular/material/dialog';
-import { MatMenuTrigger } from '@angular/material/menu';
-import { CandidateReferralPolicyModalComponent } from '../../../candidate-referal-policy-modal/candidate-referral-policy-modal.component';
-import { EmployeeReferralPolicyComponent } from '../../../employee-referal-policy/employee-referral-policy.component';
-import { ReferBuddyComponent } from '../../../refer-buddy/refer-buddy.component';
+  Component,
+  EventEmitter,
+  Input,
+  OnInit,
+  Output,
+  ViewChild,
+} from '@angular/core';
+import { MatTabChangeEvent, MatTabGroup } from '@angular/material/tabs';
+import { ActivatedRoute, Router } from '@angular/router';
+import { ProfileDetailsComponent } from './profile-details/profile-details.component';
+import { WorkExperienceComponent } from './work-experience/work-experience.component';
+import { PersonalInformationComponent } from './personal-information/personal-information.component';
+import { EducationDetailsComponent } from './education-details/education-details.component';
+import { WorkDetailsComponent } from './work-details/work-details.component';
+import { IdProofsComponent } from './id-proofs/id-proofs.component';
+// import { FitmentsComponent } from './fitments/fitments.component';
+import { ProfileService } from '@/src/app/shared/services/profile.service';
 import { ResponsiveViewComponent } from '@/src/app/shared/components/responsive-view/responsive-view.component';
-import { UploadCandidateDialogComponent } from '@/src/app/vendor/components/upload-candidate-dialog/upload-candidate-dialog.component';
-import { AddCandidateDialogComponent } from '@/src/app/shared/components/add-candidate-dialog/add-candidate-dialog.component';
-import { Router } from '@angular/router';
-import { UtilService } from '@/src/app/shared/services/util.service';
+import { MediaMatcher } from '@angular/cdk/layout';
+import {
+  Address,
+  EducationDetails,
+  // FitmentDetails,
+  IdProof,
+  PersonalInformation,
+  // ProcessType,
+  ProfileDetails,
+  WorkDetails,
+  WorkExperience,
+} from '@/src/app/interfaces/app-interface';
+import { FormControl } from '@angular/forms';
+import { SharedOutputService } from '@/src/app/shared/services/shared-output.service';
+import { CandidateQuickEditComponent } from '../../candidate/components/candidate-profile-menu/candidate-quick-edit/candidate-quick-edit.component';
+import { MatDialog } from '@angular/material/dialog';
 
+interface Content {
+  profile: { id: string } & ProfileDetails;
+  work: { id: string } & WorkExperience;
+  workExp: { id: string; workDetails: WorkDetails[] };
+  personalInfo: {
+    id: string;
+    addressDetails: Address[];
+    maritalStatus: string;
+  } & PersonalInformation;
+  idProof: {
+    id: string;
+    idProof: IdProof[];
+    firstName: string;
+    lastName: string;
+  };
+  // fitment: { id: string; lob: ProcessType } & FitmentDetails;
+  education: { id: string; educationDetails: EducationDetails[] };
+}
 @Component({
-  selector: 'app-header',
-  templateUrl: './header.component.html',
-  styleUrls: ['./header.component.scss'],
+  selector: 'app-profile',
+  templateUrl: './profile.component.html',
+  styleUrls: ['./profile.component.scss'],
 })
-export class HeaderComponent extends ResponsiveViewComponent implements OnInit {
-  @Input() menu: MatMenuTrigger | any;
-  profileRecord: any = {};
-  checkHrAccess = checkHrAccess;
-  checkEmployeeAccess = checkEmployeeAccess;
-  checkCandidateAccess = checkCandidateAccess;
-  checkVendorAccess = checkVendorAccess;
-  checkPanelAccess = checkPanelAccess;
-  userID = '';
-  isAdmin = false;
+export class ProfileComponent
+  extends ResponsiveViewComponent
+  implements OnInit
+{
+  @ViewChild('tab', { static: false }) tab: MatTabGroup;
+
+  queryParams = {
+    tab: 0,
+  };
+
+  content: Content;
+
+  @Input() userId?: string;
+  @Output() save = new EventEmitter<boolean>(false);
+
+  originalList: { id: keyof Content; label: string; content: any }[] = [
+    {
+      id: 'profile',
+      label: 'Profile Details',
+      content: ProfileDetailsComponent,
+    },
+    { id: 'work', label: 'Work Details', content: WorkDetailsComponent },
+    {
+      id: 'education',
+      label: 'Education Details',
+      content: EducationDetailsComponent,
+    },
+    {
+      id: 'personalInfo',
+      label: 'Address Information',
+      content: PersonalInformationComponent,
+    },
+    {
+      id: 'workExp',
+      label: 'Employment History',
+      content: WorkExperienceComponent,
+    },
+    // { id: 'fitment', label: 'Fitments', content: FitmentsComponent },
+
+    { id: 'idProof', label: 'ID proof', content: IdProofsComponent },
+  ];
+
+  tabContents: { id: keyof Content; label: string; content: any }[] = [
+    {
+      id: 'profile',
+      label: 'Profile Details',
+      content: ProfileDetailsComponent,
+    },
+    { id: 'work', label: 'Work Details', content: WorkDetailsComponent },
+    {
+      id: 'education',
+      label: 'Education Details',
+      content: EducationDetailsComponent,
+    },
+    {
+      id: 'personalInfo',
+      label: 'Address Information',
+      content: PersonalInformationComponent,
+    },
+    {
+      id: 'workExp',
+      label: 'Employment History',
+      content: WorkExperienceComponent,
+    },
+    // { id: 'fitment', label: 'Fitments', content: FitmentsComponent },
+
+    { id: 'idProof', label: 'ID proof', content: IdProofsComponent },
+  ];
+
+  selectedTab = new FormControl(0);
+
+  profile: { id: string } & ProfileDetails;
+  workExperienceDetails: { id: string } & WorkExperience;
+  workDetails: ({ id: string } & WorkDetails)[];
+  personalInfoDetails: { id: string } & PersonalInformation;
+  idProofDetails: { id: string; idProof: IdProof[] };
+  // fitmentDetails: { id: string } & FitmentDetails;
+  educationDetails: { id: string } & EducationDetails;
+  isHr = '';
+
+  keys: string[] = [
+    'profile',
+    'education',
+    'personalInfo',
+    'workExp',
+    'work',
+    // 'fitment',
+    'idProof',
+  ];
+
   constructor(
-    private profileService: ProfileService,
-    public dialog: MatDialog,
     media: MediaMatcher,
-    private authService: AuthService,
-    private utilService: UtilService,
-    private router: Router
+    private router: Router,
+    private activatedRoute: ActivatedRoute,
+    private profileService: ProfileService,
+    private so: SharedOutputService,
+    private dialog: MatDialog
   ) {
     super(media);
+
+    this.activatedRoute.queryParams.subscribe((params) => {
+      this.queryParams = params as { tab: number };
+    });
+
+    if (!this.userId) {
+      this.userId = localStorage.getItem('id') as string;
+    }
+    this.isHr = localStorage.getItem('role') as string;
+  }
+
+  getTabInput(id: keyof Content) {
+    return {
+      initialValues: this.content?.[id],
+      isActive: false,
+    };
+  }
+
+  getTabInput1(id: keyof Content) {
+    return this.content?.[id];
+  }
+
+  reload(event: boolean) {
+    if (event) this.ngOnInit();
   }
 
   ngOnInit(): void {
-    this.userID = localStorage.getItem('id') || '';
-    this.isAdmin = this.utilService.checkAdminAccess();
     this.getProfile();
-  }
-
-  getProfile() {
-    if (!this.profileRecord || !Object.keys(this.profileRecord)?.length) {
-      this.profileService.getProfileByID(this.userID).then((res) => {
-        this.profileRecord = res;
-      });
-    }
-  }
-
-  uploadCandidate() {
-    this.dialog
-      .open(UploadCandidateDialogComponent, {
-        maxWidth: '796px',
-        width: '95%',
-        height: '90%',
-        position: { top: '1%' },
-        closeOnNavigation: true,
-        disableClose: true,
-        autoFocus: false,
-      })
-      .afterClosed()
-      .subscribe((_res) => {
-        if (_res) console.log(_res);
-      });
-  }
-
-  addCandidate() {
-    this.dialog
-      .open(AddCandidateDialogComponent, {
-        maxWidth: this.mobileView ? '500px' : '100%',
-        height: 'auto',
-        width: this.mobileView ? '100%' : '60%',
-        ...(this.mobileView && {
-          height: 'auto',
-          position: { bottom: '0' },
-        }),
-        closeOnNavigation: true,
-        disableClose: true,
-      })
-      .afterClosed()
-      .subscribe((res) => {
-        if (res) {
-          window.location.reload();
-        }
-      });
-  }
-
-  logout() {
-    this.authService.logout();
-  }
-
-  referBuddy() {
-    this.dialog.open(ReferBuddyComponent, {
-      maxWidth: this.mobileView ? '500px' : '850px',
-      width: '100%',
-      ...(this.mobileView && { height: 'auto', position: { bottom: '0' } }),
-      closeOnNavigation: true,
-      disableClose: true,
+    this.so.getObservable().subscribe((isSaveAction) => {
+      console.log('save action::> ', isSaveAction);
+      this.save.emit(true);
+      if (isSaveAction) this.getProfile();
     });
   }
 
-  referralPolicy() {
-    if (checkEmployeeAccess()) {
-      this.dialog.open(EmployeeReferralPolicyComponent, {
-        maxWidth: this.mobileView ? '500px' : '1117px',
-        width: '100%',
-        height: this.mobileView ? '450px' : '700px',
-        position: { bottom: '0' },
+  quickEdit() {
+    this.dialog
+      .open(CandidateQuickEditComponent, {
+        maxWidth: this.mobileView ? '500px' : '100%',
+        width: this.mobileView ? '100%' : '50%',
+        ...(this.mobileView && { height: 'auto', position: { bottom: '0%' } }),
         closeOnNavigation: true,
         disableClose: true,
-        data: this.mobileView ? 'referralPolicyMobile' : 'referralPolicyWeb',
+        ...(this.mobileView ? {} : { panelClass: 'dialog-responsive' }),
+      })
+      .afterClosed()
+      .subscribe(() => {
+        this.getProfile();
       });
-    } else {
-      if (checkCandidateAccess()) {
-        this.dialog.open(CandidateReferralPolicyModalComponent, {
-          maxWidth: this.mobileView ? '500px' : '1117px',
-          width: '100%',
-          height: this.mobileView ? '450px' : '700px',
-          position: { bottom: '0' },
-          closeOnNavigation: true,
-          disableClose: true,
-          data: this.mobileView ? 'referralPolicyMobile' : 'referralPolicyWeb',
-        });
-      }
+  }
+
+  getProfile() {
+    if (this.userId) {
+      this.profileService.getNewProfile(this.userId).then((res: any) => {
+        console.log(res);
+        const id = res?.['smartieUser'].id;
+        this.profile = res?.['smartieUser'];
+
+        this.profile.fullName = this.profile.fullName
+          ? this.profile.fullName
+          : this.profile.email.split('@')[0];
+        this.workExperienceDetails = {
+          id,
+          ...res?.['workExperienceDetails'],
+        };
+        this.content = {
+          profile: res?.['smartieUser'],
+          personalInfo: {
+            addressDetails: res?.['personalInformation']?.addressDetails,
+            maritalStatus: res?.['smartieUser'].maritalStatus,
+            id,
+            ...res?.['personalInformation'],
+          },
+          idProof: {
+            id,
+            idProof: res?.['idProofDetails'],
+            firstName: this.profile.firstName,
+            lastName: this.profile.lastName,
+          },
+          // fitment: {
+          //   id,
+          //   lob: res?.['workExperienceDetails']?.lob,
+          //   ...res?.['fitmentDetails'],
+          // },
+          education: { id: id, educationDetails: res?.['educationDetails'] },
+          work: { id, ...res?.['workExperienceDetails'] },
+          workExp: { id, workDetails: res?.['workDetails'] },
+        };
+
+        if (this.content.work.experienceLevel === 'FRESHER') {
+          this.tabContents = this.tabContents.filter((e) => {
+            return e.id !== 'workExp';
+          });
+        } else {
+          this.tabContents = this.originalList;
+        }
+      });
     }
   }
+
+  onTabChange(event: MatTabChangeEvent) {
+    this.router
+      .navigate([], {
+        relativeTo: this.activatedRoute,
+        queryParams: {
+          tab: event.index,
+        },
+        queryParamsHandling: 'merge',
+      })
+      .then(() => {
+        this.getProfile();
+      });
+  }
 }
+
+
+
+profile-component.html profile image div
+
+<div class="row d-flex align-items-center">
+      <div class="col-sm-4 col-lg-2 col-3">
+        <div class="profile-avator">
+          <img src="assets/images/profile-pic.png" alt="" class="img-fluid" />
+          <!-- <div class="overlay">
+            <img
+              aria-hidden="true"
+              src="assets/images/profile-edit-icon.svg"
+              alt="edit profile"
+            />
+            <p>Upload</p>
+          </div> -->
+        </div>
+      </div>
+      <div class="col-sm-7 col-lg-9 col-8">
+        <div class="profile-left-heading">
+          <p class="">{{ profile.fullName }}</p>
+          <p class="">{{ profile.mobile }}</p>
+          <p class="mail-color">{{ profile.email }}</p>
+        </div>
+      </div>
+      <div class="col-sm-1 col-lg-1 col-1 d-flex justify-content-end">
+        <div class="profile-heading-edit">
+        
+          <button class="icon-button" (click)="quickEdit()">
+            <app-icon icon="edit_ic" title="Quick edit" />
+          </button>
+        </div>
+      </div>
+    </div>
+
