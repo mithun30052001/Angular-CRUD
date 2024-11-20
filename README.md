@@ -48,6 +48,76 @@ profile.scss
   font-size: 24px;
 }
 
+profile.component.ts
+
+import { Component, EventEmitter, Input, OnInit, Output, ViewChild } from '@angular/core';
+import { MatDialog } from '@angular/material/dialog';
+import { MatDialogConfig } from '@angular/material/dialog';
+
+@Component({
+  selector: 'app-profile',
+  templateUrl: './profile.component.html',
+  styleUrls: ['./profile.component.scss'],
+})
+export class ProfileComponent implements OnInit {
+  @ViewChild('fileInput', { static: false }) fileInput: any;
+  
+  profileImage: File | null = null;
+  imagePreviewUrl: string | ArrayBuffer | null = null;
+  isHovered: boolean = false;
+
+  constructor(private dialog: MatDialog) {}
+
+  ngOnInit(): void {
+    // Initial setup logic if needed
+  }
+
+  // Trigger the file input when the upload icon is clicked
+  triggerFileInput() {
+    this.fileInput.nativeElement.click();
+  }
+
+  // Handle file selection
+  onFileSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (input?.files?.[0]) {
+      this.profileImage = input.files[0];
+      const reader = new FileReader();
+      reader.onload = () => {
+        this.imagePreviewUrl = reader.result;
+        this.openImagePreviewModal();
+      };
+      reader.readAsDataURL(this.profileImage);
+    }
+  }
+
+  // Open modal to preview and upload image
+  openImagePreviewModal() {
+    const dialogConfig = new MatDialogConfig();
+    dialogConfig.data = {
+      imageUrl: this.imagePreviewUrl,
+      onRemove: this.removeImage.bind(this),
+      onUpload: this.uploadImage.bind(this),
+    };
+    const dialogRef = this.dialog.open(ImagePreviewDialogComponent, dialogConfig);
+  }
+
+  // Remove the selected image
+  removeImage() {
+    this.profileImage = null;
+    this.imagePreviewUrl = null;
+  }
+
+  // Upload the selected image (you can add your upload logic here)
+  uploadImage() {
+    if (this.profileImage) {
+      // Logic to upload the image to server or handle it as needed
+      console.log('Uploading image:', this.profileImage);
+    }
+  }
+}
+
+
 
 
 app-icon
