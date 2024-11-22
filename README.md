@@ -1,5 +1,180 @@
 https://teams.microsoft.com/l/meetup-join/19%3ameeting_ODliN2VjZjktZjM2MS00OGQ4LWFhMzUtZjAwNTJkMTRkY2Y4%40thread.v2/0?context=%7b%22Tid%22%3a%22f6fb95f2-bd20-41a4-b19a-c7fcf96d09a7%22%2c%22Oid%22%3a%2238c62280-1dc6-4ce5-b5b4-8a068650cb44%22%7d
 
+quickEdit()
+
+quickEdit() {
+    this.dialog
+      .open(CandidateQuickEditComponent, {
+        maxWidth: this.mobileView ? '500px' : '100%',
+        width: this.mobileView ? '100%' : '50%',
+        ...(this.mobileView && { height: 'auto', position: { bottom: '0%' } }),
+        closeOnNavigation: true,
+        disableClose: true,
+        ...(this.mobileView ? {} : { panelClass: 'dialog-responsive' }),
+      })
+      .afterClosed()
+      .subscribe(() => {
+        this.getProfile();
+      });
+  }
+
+  candidate-quick-edit.html
+
+<!-- Web View -->
+
+<div class="quick-edit-modal">
+  <div class="quick-edit-header">
+    <form [formGroup]="editProfile" novalidate>
+      <div class="heading">
+        <div class="heading-text">Edit Quick Info</div>
+        <button class="icon-button" (click)="closeModal()">
+          <app-icon icon="close"></app-icon>
+        </button>
+      </div>
+
+      <div class="row">
+        <div class="col-sm-12">
+          <div class="form-group ags-form-group">
+            <label class="form-label" for="email">Email</label>
+            <input
+              matInput
+              formControlName="emailID"
+              placeholder="Enter your Email id"
+              [errorStateMatcher]="matcher"
+              class="form-control"
+            />
+            <div class="ags-invalid" *ngIf="f['emailID']?.errors?.['required']">
+              Required
+            </div>
+            <div class="ags-invalid" *ngIf="f['emailID'].invalid">
+              Email is invalid
+            </div>
+          </div>
+        </div>
+        <div class="col-sm-12">
+          <div class="input-boxes form-inner">
+            <div class="d-flex align-items-center justify-content-between">
+              <label for="mob">Mobile</label>
+            </div>
+            <ngx-mat-intl-tel-input
+              #mob
+              format="default"
+              [enablePlaceholder]="true"
+              inputPlaceholder="Enter mobile number"
+              formControlName="mobile"
+              [onlyCountries]="['us', 'ph', 'in', 'mx']"
+              class="number-field position-relative"
+            >
+            </ngx-mat-intl-tel-input>
+            <div
+              *ngIf="f['mobile'].dirty && f['mobile'].touched && f['mobile']?.errors?.['required']"
+              class="form-invalid"
+            >
+              <p>Mobile number is required</p>
+            </div>
+            <div
+              *ngIf="f['mobile'].dirty && f['mobile']?.errors?.['validatePhoneNumber']"
+              class="form-invalid"
+            >
+              <p>Mobile number is invalid</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-sm-12">
+          <div class="form-group form-inner">
+            <label for="dob" class="form-label"
+              >Date Of Birth<span class="required"></span
+            ></label>
+
+            <div class="form-datepicker">
+              <input
+                (dateChange)="onDateChange($event)"
+                #dob
+                readonly
+                [max]="max"
+                formControlName="dob"
+                class="form-control"
+                [matDatepicker]="picker"
+              />
+              <mat-datepicker-toggle
+                matIconSuffix
+                [for]="picker"
+              ></mat-datepicker-toggle>
+            </div>
+            <mat-datepicker #picker></mat-datepicker>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-sm-12">
+          <div class="form-group ags-form-group">
+            <!-- <label class="required form-label" for="otp">OTP</label> -->
+            <div class="d-flex align-items-center justify-content-between">
+              <label for="mob">OTP</label>
+              <div aria-hidden="true" class="send-otp" (click)="sendOTP()">
+                Send OTP
+              </div>
+            </div>
+            <div class="input-container">
+              <input
+                type="password"
+                [type]="hide ? 'password' : 'text'"
+                matInput
+                formControlName="otp"
+                class="form-control"
+                placeholder="Enter your OTP"
+              />
+              <app-icon
+                class="app-icon"
+                [icon]="hide ? 'visibility_off' : 'visibility'"
+                (click)="hide = !hide"
+              ></app-icon>
+            </div>
+            <mat-hint *ngIf="otpSend" class="w-100"
+              ><div class="row">
+                <div class="col-8 mobile-hint-text mt-1 tx-color">
+                  OTP sent successfully
+                </div>
+              </div>
+            </mat-hint>
+            <div
+              class="ags-invalid"
+              *ngIf="f['otp'].dirty && f['otp'].touched && f['otp'].invalid"
+            >
+              OTP is required
+            </div>
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <div class="d-flex justify-content-md-end quick-edit-footer">
+    <div class="mr-1rem">
+      <button
+        title="Cancel"
+        mat-dialog-close
+        class="ags-outline-btn ags-hxl56 btn-font16 ags-padding1624"
+      >
+        Cancel
+      </button>
+    </div>
+    <div>
+      <button
+        title="Save"
+        class="ags-primary-btn ags-hxl56 btn-font16 ags-padding1624"
+        (click)="submitForm()"
+        [disabled]="disableForm()"
+      >
+        Save
+      </button>
+    </div>
+  </div>
+</div>
+
+
+
+
 profile_picture
 
 <div class="row d-flex align-items-center">
