@@ -1,5 +1,59 @@
 https://teams.microsoft.com/l/meetup-join/19%3ameeting_ODliN2VjZjktZjM2MS00OGQ4LWFhMzUtZjAwNTJkMTRkY2Y4%40thread.v2/0?context=%7b%22Tid%22%3a%22f6fb95f2-bd20-41a4-b19a-c7fcf96d09a7%22%2c%22Oid%22%3a%2238c62280-1dc6-4ce5-b5b4-8a068650cb44%22%7d
 
+profile.ts
+
+uploadProfileImage(file: File) {
+    this.profileService.uploadProfileImage(this.userId, file).subscribe({
+      next: (response) => {
+        console.log('Profile image uploaded successfully', response);
+        this.getProfileImage();  // Refresh the image preview after upload
+      },
+      error: (error) => {
+        console.error('Error uploading image:', error);
+      },
+    });
+  }
+
+  getProfileImage() {
+    this.profileService.getProfileImage(this.userId).subscribe({
+      next: (response) => {
+        // Create an image URL from the blob response
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          this.imageUrl = reader.result as string;
+        };
+        reader.readAsDataURL(response);
+      },
+      error: (error) => {
+        console.error('Error fetching profile image:', error);
+      },
+    });
+  }
+
+  openImagePreview() {
+    const dialogRef = this.dialog.open(ImagePreviewDialog, {
+      data: { imageUrl: this.imageUrl },
+    });
+
+    dialogRef.afterClosed().subscribe((result) => {
+      if (result === 'delete') {
+        this.deleteProfileImage();
+      }
+    });
+  }
+
+  deleteProfileImage() {
+    this.profileService.deleteProfileImage(this.userId).subscribe({
+      next: (response) => {
+        console.log('Profile image deleted successfully', response);
+        this.imageUrl = 'assets/images/profile-pic.png';  // Reset to default image
+      },
+      error: (error) => {
+        console.error('Error deleting image:', error);
+      },
+    });
+  }
+
 profile-service
 private baseUrl = `${environment.API_URL}/candidate-services/profile`;
 
