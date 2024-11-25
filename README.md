@@ -1,5 +1,45 @@
 https://teams.microsoft.com/l/meetup-join/19%3ameeting_ODliN2VjZjktZjM2MS00OGQ4LWFhMzUtZjAwNTJkMTRkY2Y4%40thread.v2/0?context=%7b%22Tid%22%3a%22f6fb95f2-bd20-41a4-b19a-c7fcf96d09a7%22%2c%22Oid%22%3a%2238c62280-1dc6-4ce5-b5b4-8a068650cb44%22%7d
 
+
+.html
+
+<div class="quick-edit-modal">
+  <div class="quick-edit-header">
+    <div class="heading">
+      <div class="heading-text">Profile Image</div>
+      <button class="icon-button" (click)="closeDialog()">
+      </button>
+    </div>
+  </div>
+  <div mat-dialog-content class="quick-edit-body">
+    <img [src]="imageUrl" alt="Profile Image" />
+  </div>
+
+  <div class="d-flex justify-content-md-end quick-edit-footer">
+    <div class="mr-1rem">
+      <button
+        title="Cancel"
+        class="ags-outline-btn ags-hxl56 btn-font16 ags-padding1624"
+        (click)="closeDialog()"
+      >
+        Close
+      </button>
+    </div>
+    <div>
+      <button
+        title="Delete"
+        class="ags-primary-btn ags-hxl56 btn-font16 ags-padding1624"
+        (click)="deleteImage()"
+        color="warn"
+      >
+        Delete
+        {{isEdit}}
+      </button>
+    </div>
+  </div>
+</div>
+
+
 {
     "message": "SUCCESS",
     "messageDesc": "https://agstadtdev.s3.ap-south-1.amazonaws.com/0c553ed6-7848-48e6-9f48-a85e809f9f77-colony-or-group-of-razorbills-alca-torda-swimming-in-the-sea-in-vicinity-of-cable-rock-at-golden-hour-large-file-size-bray-head-cowicklow-WPDNEH.jpg?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20241122T114653Z&X-Amz-SignedHeaders=host&X-Amz-Expires=3600&X-Amz-Credential=AKIASP5FLSULKIASX4FA%2F20241122%2Fap-south-1%2Fs3%2Faws4_request&X-Amz-Signature=8f263c5f2dcac043ac0957964d374c13e5fc70566ca3deb8938f746f6628bc4c",
