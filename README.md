@@ -1,5 +1,45 @@
 https://teams.microsoft.com/l/meetup-join/19%3ameeting_ODliN2VjZjktZjM2MS00OGQ4LWFhMzUtZjAwNTJkMTRkY2Y4%40thread.v2/0?context=%7b%22Tid%22%3a%22f6fb95f2-bd20-41a4-b19a-c7fcf96d09a7%22%2c%22Oid%22%3a%2238c62280-1dc6-4ce5-b5b4-8a068650cb44%22%7d
 
+solution.html
+
+<div class="quick-edit-modal">
+  <div class="quick-edit-header">
+    <div class="heading">
+      <div class="heading-text">Profile Image</div>
+      <button class="icon-button" (click)="closeDialog()">
+      </button>
+    </div>
+  </div>
+
+  <div mat-dialog-content class="quick-edit-body">
+    <img [src]="imageUrl" alt="Profile Image" />
+  </div>
+
+  <!-- Buttons section that will only display if isEdit is true -->
+  <div class="d-flex justify-content-md-end quick-edit-footer">
+    <div class="mr-1rem" *ngIf="isEdit">
+      <button
+        title="Cancel"
+        class="ags-outline-btn ags-hxl56 btn-font16 ags-padding1624"
+        (click)="closeDialog()"
+      >
+        Close
+      </button>
+    </div>
+    <div *ngIf="isEdit">
+      <button
+        title="Delete"
+        class="ags-primary-btn ags-hxl56 btn-font16 ags-padding1624"
+        (click)="deleteImage()"
+        color="warn"
+      >
+        Delete
+        {{ isEdit }}
+      </button>
+    </div>
+  </div>
+</div>
+
 
 .html
 
