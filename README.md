@@ -1,159 +1,76 @@
 https://teams.microsoft.com/l/meetup-join/19%3ameeting_ODliN2VjZjktZjM2MS00OGQ4LWFhMzUtZjAwNTJkMTRkY2Y4%40thread.v2/0?context=%7b%22Tid%22%3a%22f6fb95f2-bd20-41a4-b19a-c7fcf96d09a7%22%2c%22Oid%22%3a%2238c62280-1dc6-4ce5-b5b4-8a068650cb44%22%7d
 
-solution.html
+req-upload.component.ts
 
-<div class="quick-edit-modal">
-  <div class="quick-edit-header">
-    <div class="heading">
-      <div class="heading-text">Profile Image</div>
-      <button class="icon-button" (click)="closeDialog()">
-      </button>
-    </div>
-  </div>
-
-  <div mat-dialog-content class="quick-edit-body">
-    <img [src]="imageUrl" alt="Profile Image" />
-  </div>
-
-  <!-- Buttons section that will only display if isEdit is true -->
-  <div class="d-flex justify-content-md-end quick-edit-footer">
-    <div class="mr-1rem" *ngIf="isEdit">
-      <button
-        title="Cancel"
-        class="ags-outline-btn ags-hxl56 btn-font16 ags-padding1624"
-        (click)="closeDialog()"
-      >
-        Close
-      </button>
-    </div>
-    <div *ngIf="isEdit">
-      <button
-        title="Delete"
-        class="ags-primary-btn ags-hxl56 btn-font16 ags-padding1624"
-        (click)="deleteImage()"
-        color="warn"
-      >
-        Delete
-        {{ isEdit }}
-      </button>
-    </div>
-  </div>
-</div>
-
-
-.html
-
-<div class="quick-edit-modal">
-  <div class="quick-edit-header">
-    <div class="heading">
-      <div class="heading-text">Profile Image</div>
-      <button class="icon-button" (click)="closeDialog()">
-      </button>
-    </div>
-  </div>
-  <div mat-dialog-content class="quick-edit-body">
-    <img [src]="imageUrl" alt="Profile Image" />
-  </div>
-
-  <div class="d-flex justify-content-md-end quick-edit-footer">
-    <div class="mr-1rem">
-      <button
-        title="Cancel"
-        class="ags-outline-btn ags-hxl56 btn-font16 ags-padding1624"
-        (click)="closeDialog()"
-      >
-        Close
-      </button>
-    </div>
-    <div>
-      <button
-        title="Delete"
-        class="ags-primary-btn ags-hxl56 btn-font16 ags-padding1624"
-        (click)="deleteImage()"
-        color="warn"
-      >
-        Delete
-        {{isEdit}}
-      </button>
-    </div>
-  </div>
-</div>
-
-
-{
-    "message": "SUCCESS",
-    "messageDesc": "https://agstadtdev.s3.ap-south-1.amazonaws.com/0c553ed6-7848-48e6-9f48-a85e809f9f77-colony-or-group-of-razorbills-alca-torda-swimming-in-the-sea-in-vicinity-of-cable-rock-at-golden-hour-large-file-size-bray-head-cowicklow-WPDNEH.jpg?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20241122T114653Z&X-Amz-SignedHeaders=host&X-Amz-Expires=3600&X-Amz-Credential=AKIASP5FLSULKIASX4FA%2F20241122%2Fap-south-1%2Fs3%2Faws4_request&X-Amz-Signature=8f263c5f2dcac043ac0957964d374c13e5fc70566ca3deb8938f746f6628bc4c",
-    "fileName": "colony-or-group-of-razorbills-alca-torda-swimming-in-the-sea-in-vicinity-of-cable-rock-at-golden-hour-large-file-size-bray-head-cowicklow-WPDNEH.jpg"
-}
-
-imageUrl
-
-DATA URL data:application/json;base64,eyJtZXNzYWdlIjoiU1VDQ0VTUyIsIm1lc3NhZ2VEZXNjIjoiaHR0cHM6Ly9hZ3N0YWR0ZGV2LnMzLmFwLXNvdXRoLTEuYW1hem9uYXdzLmNvbS8wZDIxYTlmMy0xNDNiLTQwOTMtYjMxZS0wZjgxNTY3NGYzMTItQzAwNzM1X1RoaXJ1bmF2dWtrYXJhc3UlMjBOYXRlc2FuLmpwZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1EYXRlPTIwMjQxMTIyVDA5NTkwMlomWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0JlgtQW16LUV4cGlyZXM9MzYwMCZYLUFtei1DcmVkZW50aWFsPUFLSUFTUDVGTFNVTEtJQVNYNEZBJTJGMjAyNDExMjIlMkZhcC1zb3V0aC0xJTJGczMlMkZhd3M0X3JlcXVlc3QmWC1BbXotU2lnbmF0dXJlPWY4ZGQ0N2VjM2ZiMDIxNzgyNDNjZjllM2Q1NDY4Y2VkMDZmZjQ0OWI0ZTE0NTExOTk3OGZkYTNjODQ1YzViYTYiLCJmaWxlTmFtZSI6IkMwMDczNV9UaGlydW5hdnVra2FyYXN1IE5hdGVzYW4uanBnIn0=
-
-
-candidate-image-preview.ts
-
-import { Component, Inject } from '@angular/core';
-import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
-import { ProfileService } from '@/src/app/shared/services/profile.service';
+import { Component } from '@angular/core';
+import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 
 @Component({
-  selector: 'app-image-preview-dialog',
-  templateUrl: './candidate-image-preview-dialog.component.html',
-  styleUrls: ['./candidate-image-preview-dialog.component.scss'],
+  selector: 'app-req-upload-dialog',
+  templateUrl: './req-upload-dialog.component.html',
+  styleUrls: ['./req-upload-dialog.component.scss'],
 })
-export class CandidateImagePreviewDialogComponent {
+export class ReqUploadDialogComponent {
   constructor(
-    public dialogRef: MatDialogRef<CandidateImagePreviewDialogComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: any,
-    private profileService: ProfileService
+    private dialog: MatDialog,
+    public dialogRef: MatDialogRef<ReqUploadDialogComponent>
   ) {}
-
-  // Close the dialog
-  closeDialog(): void {
+  closeModal() {
     this.dialogRef.close();
-    }
-    
-    getImage(): any {
-        this.profileService.getProfileImage(this.data.userId).subscribe({
-          next: (response) => {
-            // Create an image URL from the blob response
-            const reader = new FileReader();
-            reader.onloadend = () => {
-              this.data.imageUrl = reader.result as string;
-            };
-           return reader.readAsDataURL(response);
-          },
-          error: (error) => {
-            console.error('Error fetching profile image:', error);
-          },
-        });
-    }
-
-  // Delete the profile image
-  deleteImage(): void {
-    this.profileService.deleteProfileImage(this.data.userId).subscribe({
-      next: (response) => {
-        console.log('Profile image deleted successfully', response);
-        this.dialogRef.close('delete'); // Close and send 'delete' signal to parent component
-      },
-      error: (error) => {
-        console.error('Error deleting image:', error);
-      },
-    });
   }
 }
 
+req-upload.component.html
 
-candidate-image-preview.html
-
-<h1 mat-dialog-title>Profile Image</h1>
-
-<div mat-dialog-content class="text-center">
-  <img [src]="getImage()" alt="Profile Image" class="img-fluid" />
+<div class="req-edit-modal">
+  <div class="req-edit-header">
+    <h5 class="heading-text">Req Mapping Edit</h5>
+    <div>
+      <button class="close-btn" (click)="closeModal()">
+        <app-icon class="app-icon" icon="close"></app-icon>
+      </button>
+    </div>
+  </div>
+  <form>
+    <div class="req-edit-body">
+      <div class="row">
+        <div class="col-lg-6 col-sm-6">
+          <div class="form-group ags-form-group">
+            <label for="assignor" class="form-label"
+              >Jobs<span class="required"></span
+            ></label>
+            <mat-form-field>
+              <input
+                type="text"
+                placeholder="search jobs"
+                aria-label="string"
+                matInput
+              />
+            </mat-form-field>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="req-edit-footer">
+      <div>
+        <button
+          title="Cancel"
+          mat-dialog-close
+          class="ags-outline-btn ags-hmd44 btn-font16 ags-padding1624"
+        >
+          Cancel
+        </button>
+      </div>
+      <div>
+        <button
+          title="Submit"
+          type="submit"
+          class="ags-primary-btn ags-hmd44 btn-font16 ags-padding1624"
+        >
+         Upload
+        </button>
+      </div>
+    </div>
+  </form>
 </div>
 
-<div mat-dialog-actions class="d-flex justify-content-between">
-  <button mat-button (click)="closeDialog()">Close</button>
-  <button mat-button (click)="deleteImage()" color="warn">Delete</button>
-</div>
