@@ -1,6 +1,82 @@
 https://teams.microsoft.com/l/meetup-join/19%3ameeting_ODliN2VjZjktZjM2MS00OGQ4LWFhMzUtZjAwNTJkMTRkY2Y4%40thread.v2/0?context=%7b%22Tid%22%3a%22f6fb95f2-bd20-41a4-b19a-c7fcf96d09a7%22%2c%22Oid%22%3a%2238c62280-1dc6-4ce5-b5b4-8a068650cb44%22%7d
 
-req.service.ts
+Add columns :  RecId closuredate spocname manager onboardingdate jobid opennumbers
+
+req-mapping-dialog.ts
+
+import { Component } from '@angular/core';
+import { MatDialog, MatDialogRef } from '@angular/material/dialog';
+
+@Component({
+  selector: 'app-req-mapping-edit-dialog',
+  templateUrl: './req-mapping-edit-dialog.component.html',
+  styleUrls: ['./req-mapping-edit-dialog.component.scss'],
+})
+export class ReqMappingEditDialogComponent {
+  constructor(
+    private dialog: MatDialog,
+    public dialogRef: MatDialogRef<ReqMappingEditDialogComponent>
+  ) {}
+  closeModal() {
+    this.dialogRef.close();
+  }
+}
+
+req-mapping-dialog.html
+
+<div class="req-edit-modal">
+  <div class="req-edit-header">
+    <h5 class="heading-text">Req Mapping Edit</h5>
+    <div>
+      <button class="close-btn" (click)="closeModal()">
+        <app-icon class="app-icon" icon="close"></app-icon>
+      </button>
+    </div>
+  </div>
+  <form>
+    <div class="req-edit-body">
+      <div class="row">
+        <div class="col-lg-6 col-sm-6">
+          <div class="form-group ags-form-group">
+            <label for="assignor" class="form-label"
+              >Job<span class="required"></span
+            ></label>
+            <mat-form-field>
+              <input
+                type="text"
+                placeholder="search jobs"
+                aria-label="string"
+                matInput
+              />
+            </mat-form-field>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="req-edit-footer">
+      <div>
+        <button
+          title="Cancel"
+          mat-dialog-close
+          class="ags-outline-btn ags-hmd44 btn-font16 ags-padding1624"
+        >
+          Cancel
+        </button>
+      </div>
+      <div>
+        <button
+          title="Submit"
+          type="submit"
+          class="ags-primary-btn ags-hmd44 btn-font16 ags-padding1624"
+        >
+          Schedule
+        </button>
+      </div>
+    </div>
+  </form>
+</div>
+
+req-service.ts
 
 import { environment } from '@/environments/environment';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
@@ -11,89 +87,27 @@ import { Observable } from 'rxjs';
   providedIn: 'root',
 })
 export class ReqService {
-
   constructor(private http: HttpClient) {}
 
-  // Method to upload requisition details
   uploadReqdetails(file: File): Observable<any> {
     const formData = new FormData();
     formData.append('file', file, file.name);
 
-    // API endpoint for uploading the file
-    const url = `${environment.API_URL}requisition/upload`;
+    const url = `${environment.API_URL}/job-services/requisition/upload`;
 
     return this.http.post<any>(url, formData);
   }
 }
 
 
+put call to  '`${environment.API_URL}requisition/job/update' with
 
-requpload.component.ts
-
-import { Component } from '@angular/core';
-import { MatDialog, MatDialogRef } from '@angular/material/dialog';
-import { ReqService } from './req.service';  // Import the ReqService
-import { catchError, of } from 'rxjs';  // To handle errors
-
-@Component({
-  selector: 'app-req-upload-dialog',
-  templateUrl: './req-upload-dialog.component.html',
-  styleUrls: ['./req-upload-dialog.component.scss'],
-})
-export class ReqUploadDialogComponent {
-  selectedFile: File | null = null;
-  fileError: string | null = null;
-  uploadSuccess: boolean = false;
-  uploadError: string | null = null;
-
-  constructor(
-    private dialog: MatDialog,
-    public dialogRef: MatDialogRef<ReqUploadDialogComponent>,
-    private reqService: ReqService  // Inject the ReqService
-  ) {}
-
-  closeModal() {
-    this.dialogRef.close();
-  }
-
-  // File selection handler
-  onFileSelected(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    if (input?.files?.length) {
-      const file = input.files[0];
-      if (file.type !== 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
-        this.fileError = 'Please upload a valid .xlsx file.';
-        this.selectedFile = null;
-      } else {
-        this.fileError = null;
-        this.selectedFile = file;
-      }
-    }
-  }
-
-  // Form submission handler
-  onSubmit(): void {
-    if (this.selectedFile) {
-      this.uploadReqdetails(this.selectedFile);
-    }
-  }
-
-  // Upload file method that calls the service
-  uploadReqdetails(file: File): void {
-    this.reqService.uploadReqdetails(file).pipe(
-      catchError((error: HttpErrorResponse) => {
-        // Handle errors during the upload
-        this.uploadError = `Upload failed: ${error.message}`;
-        this.uploadSuccess = false;
-        return of(null);  // Return an observable with null value to continue the flow
-      })
-    ).subscribe(response => {
-      if (response) {
-        // Assuming the response indicates success
-        this.uploadSuccess = true;
-        this.uploadError = null;
-        console.log('File uploaded successfully:', response);
-      }
-    });
-  }
+{
+"jobId"
+"requisitionId"
+"spoc"
+"closureDate"
+"onBoardingDate"
+"openNumbers"
 }
+
