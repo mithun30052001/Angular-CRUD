@@ -2,151 +2,224 @@ https://teams.microsoft.com/l/meetup-join/19%3ameeting_ODliN2VjZjktZjM2MS00OGQ4L
 
 hr-edit.component.ts
 
-<!-- Mobile View -->
+import { CandidateQuickEditComponent } from '@/src/app/candidate/components/candidate-profile-menu/candidate-quick-edit/candidate-quick-edit.component';
+import { MessageModalsComponent } from '@/src/app/common-modules/message-modals/message-modals.component';
+import {
+  ApplicationStatus,
+  CandidateApplication,
+  ElasticSearchResponse,
+  UserProfile,
+} from '@/src/app/interfaces/app-interface';
+import { ResponsiveViewComponent } from '@/src/app/shared/components/responsive-view/responsive-view.component';
+import { AuthService } from '@/src/app/shared/services/auth.service';
+import { ApplicationService } from '@/src/app/shared/services/job-application.service';
+import { Job } from '@/src/app/shared/services/job-posting.service';
+import { UtilService } from '@/src/app/shared/services/util.service';
+import { MediaMatcher } from '@angular/cdk/layout';
+import { Component, Inject, OnInit } from '@angular/core';
+import {
+  AbstractControl,
+  FormBuilder,
+  FormControl,
+  FormGroup,
+  ValidationErrors,
+  Validators,
+} from '@angular/forms';
+import {
+  MAT_DIALOG_DATA,
+  MatDialog,
+  MatDialogRef,
+} from '@angular/material/dialog';
+import {
+  catchError,
+  debounceTime,
+  map,
+  Observable,
+  of,
+  startWith,
+  switchMap,
+} from 'rxjs';
 
-<div class="quick-edit-modal">
-  <form [formGroup]="form" novalidate>
-    <div class="heading">
-      <div class="heading-text">Job Management</div>
-      <div>
-        <app-icon icon="close" (click)="closeModal()"></app-icon>
-      </div>
-    </div>
-    <div class="quick-edit-body">
-      <div class="row">
-        <div class="col-sm-12">
-          <div class="form-group form-inner">
-            <label class="form-label" for="hr"
-              >Tag HR<span class="required"></span
-            ></label>
-            <mat-form-field
-              [matTooltip]="
-                f['hr'].disabled ? 'Only admin users can update this field' : ''
-              "
-              class="example-form-field"
-            >
-              <!-- <mat-select name="hr" multiple="false" formControlName="hr">
-                <mat-option
-                  *ngFor="let option of hrDetailList"
-                  [value]="option.id"
-                >
-                  {{ option.email }}
-                </mat-option>
-              </mat-select> -->
-              <input
-                [formControl]="autoCompleteControl"
-                type="text"
-                placeholder="search HR"
-                aria-label="string"
-                matInput
-                [matAutocomplete]="auto"
-              />
-              <mat-autocomplete
-                [displayWith]="displayFullNameFn"
-                autoActiveFirstOption
-                #auto="matAutocomplete"
-              >
-                <mat-option
-                  *ngFor="
-                    let item of hrAutoComplete$ | async;
-                    let index = index
-                  "
-                  [value]="item"
-                >
-                  {{ item.fullName ?? item.email.split('@')[0] | titlecase }}
-                </mat-option>
-              </mat-autocomplete>
-            </mat-form-field>
-            <div
-              *ngIf="f['hr'].touched && f['hr'].dirty && f['hr'].invalid"
-              class="form-invalid"
-            >
-              <p>HR is mandatory</p>
-            </div>
-          </div>
-        </div>
-      </div>
+@Component({
+  selector: 'app-hr-quick-edit',
+  templateUrl: './hr-quick-edit.component.html',
+  styleUrls: ['./hr-quick-edit.component.scss'],
+})
+export class HrQuickEditComponent
+  extends ResponsiveViewComponent
+  implements OnInit
+{
+  form: FormGroup = new FormGroup({
+    hr: new FormControl(''),
+    jobId: new FormControl(''),
+  });
+  jobs: Job[] = [];
+  hrDetailList: any;
+  userId = '';
+  get f(): { [key: string]: AbstractControl } {
+    return this.form.controls;
+  }
 
-      <!-- Status -->
-      <div class="row">
-        <div class="col-sm-12">
-          <div class="form-group form-inner">
-            <label class="form-label" for="job"
-              >Job<span class="required"></span
-            ></label>
-            <mat-form-field
-              [matTooltip]="
-                f['jobId'].disabled ? 'Cannot change job right now' : ''
-              "
-              class="example-form-field"
-            >
-              <mat-select name="job" multiple="false" formControlName="jobId">
-                <mat-option *ngFor="let job of jobs" [value]="job.id">
-                  {{ job.jobTitle | textFill }} -
-                  {{ job.location | textFill | startCase }}
-                  ({{ job.experienceLevel | textFill }})
-                </mat-option>
-              </mat-select>
+  isAdmin = false;
 
-              <div
-                *ngIf="
-                  f['jobId'].touched && f['jobId'].dirty && f['jobId'].invalid
-                "
-                class="form-invalid"
-              >
-                <p>Job is mandatory</p>
-              </div>
-            </mat-form-field>
-          </div>
-        </div>
-      </div>
+  public hrAutoComplete$: any;
+  public autoCompleteControl = new FormControl<any>(
+    { value: '', disabled: false },
+    [Validators.required, this.validateHrIdCtrl]
+  );
 
-      <!-- Remarks -->
-      <!-- <div class="row">
-        <div class="col-sm-12">
-          <div class="form-inner">
-            <label class="form-label" for="remarks">Remarks</label>
-            <div>
-              <input
-                name="remarks"
-                matInput
-                formControlName="remark"
-                class="form-control"
-                placeholder="Remarks"
-              />
-              <div
-                *ngIf="
-                  f['remark'].touched &&
-                  f['remark'].dirty &&
-                  f['remark'].invalid
-                "
-                class="form-invalid"
-              >
-                <p>Cannot exceed 200 characters</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div> -->
-    </div>
-    <div class="quick-edit-footer">
-      <div class="row justify-content-end">
-        <div class="col-sm-2">
-          <button
-            title="Save"
-            class="ags-primary-btn ags-hlg48 ags-padding1216 btn-font16"
-            (click)="submitForm()"
-            [disabled]="
-              form.invalid || (f['hr'].disabled && f['jobId'].disabled)
-            "
-          >
-            Save
-          </button>
-        </div>
-      </div>
-    </div>
-  </form>
-</div>
+  constructor(
+    private formBuilder: FormBuilder,
+    private authService: AuthService,
+    private dialogRef: MatDialogRef<CandidateQuickEditComponent>,
+    media: MediaMatcher,
+    public dialog: MatDialog,
+    @Inject(MAT_DIALOG_DATA)
+    public data: CandidateApplication,
+    private utilService: UtilService,
+    private applicationService: ApplicationService
+  ) {
+    super(media);
+  }
+
+  lookup(value: string): Observable<any> {
+    return this.authService.hrSearch(value?.toLowerCase()).pipe(
+      // map the item property of the results as our return object
+      map((results) => results),
+      // catch errors
+      catchError((_) => {
+        return of(null);
+      })
+    );
+  }
+
+  displayFullNameFn(option: UserProfile | null) {
+    return option ? option.fullName ?? option.email.split('@')[0] : '';
+  }
+
+  isJobEditable = (status: ApplicationStatus) => {
+    return [
+      'NONE',
+      'REGISTERED',
+      'CREATED',
+      'WALKEDIN',
+      'WAITING_FOR_HRROUND',
+    ].includes(status);
+  };
+
+  initiateForm() {
+    this.isAdmin = this.utilService.checkAdminAccess();
+    this.userId = localStorage.getItem('id') as string;
+    if (this.data) {
+      this.form = this.formBuilder.group({
+        hr: this.autoCompleteControl,
+        jobId: [
+          { value: '', disabled: !this.isJobEditable(this.data.status) },
+          Validators.required,
+        ],
+      });
+
+      if (this.data?.hr?.id) {
+        const hrField = this.form.get('hr');
+        hrField?.patchValue(this.data.hr);
+        console.log(hrField);
+        if (!this.isAdmin) hrField?.disable();
+      }
+      if (this.data?.job?.id) {
+        const jobIdField = this.form.get('jobId');
+        jobIdField?.patchValue(this.data.job.id);
+      }
+    }
+  }
+
+  validateHrIdCtrl(ctrl: AbstractControl): ValidationErrors | null {
+    const val = ctrl.value;
+    if (!val || val === '' || !val?.id) {
+      return {
+        error: true,
+      };
+    }
+    return null;
+  }
+
+  ngOnInit() {
+    this.hrAutoComplete$ = this.autoCompleteControl.valueChanges.pipe(
+      startWith(''),
+      // delay emits
+      debounceTime(300),
+      // use switch map so as to cancel previous subscribed events, before creating new once
+      switchMap((value) => {
+        if (value !== '') {
+          if (value?.fullName) {
+            return of(null);
+          }
+          // lookup from github
+          return this.lookup(value);
+        } else {
+          // if no value is present, return null
+          return this.lookup('');
+        }
+      })
+    );
+    this.initiateForm();
+
+    this.getJobs();
+  }
+
+  transformList(response: ElasticSearchResponse<any>) {
+    return response.hits.hits.map((job) => {
+      return job._source;
+    });
+  }
+
+  getJobs() {
+    this.applicationService
+      .getAllJobs({
+        orderBy: 'desc',
+        limit: 500,
+        offset: 0,
+      })
+      .then((res) => {
+        this.jobs = this.transformList(res);
+      });
+  }
+
+  submitForm() {
+    const payload = {
+      ...this.form.value,
+      ...(this.form.value?.hr?.id && { hr: this.form.value.hr.id }),
+      referralUpdate: this.data.status === 'NONE',
+    };
+
+    this.applicationService
+      .quickUpdateCandidateApplicationByHr(this.data.id, payload)
+      .then((_res) => {
+        this.dialog
+          .open(MessageModalsComponent, {
+            maxWidth: this.mobileView ? '500px' : '100%',
+            width: this.mobileView ? '100%' : '30%',
+            ...(this.mobileView && {
+              height: 'auto',
+              position: { bottom: '0' },
+            }),
+            closeOnNavigation: true,
+            disableClose: false,
+            data: this.mobileView
+              ? 'hrQuickEditSaveSuccessfullyMobile'
+              : 'hrQuickEditSaveSuccessfullyWeb',
+          })
+          .afterClosed()
+          .subscribe(() => {
+            this.dialogRef.close(1);
+          });
+      });
+  }
+
+  closeModal() {
+    this.dialogRef.close();
+  }
+}
+
 
 
 hr-edit.component.html
