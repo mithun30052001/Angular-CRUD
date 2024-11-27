@@ -1,103 +1,214 @@
 https://teams.microsoft.com/l/meetup-join/19%3ameeting_ODliN2VjZjktZjM2MS00OGQ4LWFhMzUtZjAwNTJkMTRkY2Y4%40thread.v2/0?context=%7b%22Tid%22%3a%22f6fb95f2-bd20-41a4-b19a-c7fcf96d09a7%22%2c%22Oid%22%3a%2238c62280-1dc6-4ce5-b5b4-8a068650cb44%22%7d
 
+
 req.ts
 
-import { Component, Inject, OnInit } from '@angular/core';
+import { Component, Inject } from '@angular/core';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { ReqService } from '@/src/app/shared/services/req.service';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { UserProfile } from '@/src/app/interfaces/app-interface';
+import {
+  FormBuilder,
+  FormGroup,
+  Validators,
+  FormControl,
+  AbstractControl,
+  ValidationErrors
+} from '@angular/forms';
 import { Requisition } from '../req-mapping/req-mapping.component';
-import { Observable } from 'rxjs';
-import { startWith, map } from 'rxjs/operators';
+import { Job } from '@/src/app/shared/services/job-posting.service';
+import { ElasticSearchResponse } from '@/src/app/interfaces/app-interface';
+import { ApplicationService } from '@/src/app/shared/services/job-application.service';
+import {
+  catchError,
+  debounceTime,
+  map,
+  Observable,
+  of,
+  startWith,
+  switchMap,
+} from 'rxjs';
+import { AuthService } from '@/src/app/shared/services/auth.service';
+
 
 @Component({
   selector: 'app-req-mapping-edit-dialog',
   templateUrl: './req-mapping-edit-dialog.component.html',
   styleUrls: ['./req-mapping-edit-dialog.component.scss'],
 })
-export class ReqMappingEditDialogComponent implements OnInit {
+export class ReqMappingEditDialogComponent {
   reqForm: FormGroup;
-  jobOptions: string[] = [];
-  filteredJobs: Observable<string[]>;
+  jobs: Job[] = [];
+  public managerComplete$: any;
+  public spocComplete$: any;
+  public managerControl = new FormControl<any>({ value: '', disabled: false }, [
+    Validators.required,
+    this.validateHrIdCtrl,
+  ]);
+  public spocControl = new FormControl<any>({ value: '', disabled: false }, [
+    Validators.required,
+    this.validateHrIdCtrl,
+  ]);
+  public jobControl = new FormControl<any>({ value: '' }, Validators.required);
 
-  hrOptions: string[] = [];
-  filteredSPOCs: Observable<string[]>;
-  filteredManagers: Observable<string[]>;
+  form: FormGroup = new FormGroup({
+    reqForm: new FormGroup({
+      jobId: this.jobControl,
+      requisitionId: new FormControl(''),
+      spoc: this.spocControl,
+      closureDate: new FormControl(''),
+      onboardingDate: new FormControl(''),
+      manager: this.managerControl,
+    }),
+  });
+  formFields = [
+    {
+      name: 'requisitionId',
+      label: 'Requisition ID',
+      placeholder: 'Enter requisition ID',
+      type: 'text',
+    },
+    {
+      name: 'closureDate',
+      label: 'Closure Date',
+      placeholder: 'Enter closure date',
+      type: 'date',
+    },
+    {
+      name: 'onboardingDate',
+      label: 'Onboarding Date',
+      placeholder: 'Enter onboarding date',
+      type: 'date',
+    },
+  ];
 
   constructor(
     private dialogRef: MatDialogRef<ReqMappingEditDialogComponent>,
     @Inject(MAT_DIALOG_DATA) public rowData: Requisition,
     private reqService: ReqService,
-    private fb: FormBuilder
+    private fb: FormBuilder,
+    private applicationService: ApplicationService,
+    private authService: AuthService
   ) {
     this.reqForm = this.fb.group({
-      jobId: ['', Validators.required],
+      jobId: this.jobControl,
       requisitionId: ['', Validators.required],
-      spoc: ['', Validators.required],
+      spoc: this.spocControl,
       closureDate: ['', Validators.required],
       onboardingDate: ['', Validators.required],
-      manager: ['', Validators.required],
+      manager: this.managerControl,
+      published: [true, Validators.required],
     });
+    console.log('DIALOG DATA', rowData);
+  }
+
+  validateHrIdCtrl(ctrl: AbstractControl): ValidationErrors | null {
+    const val = ctrl.value;
+    if (!val || val === '' || !val?.id) {
+      return {
+        error: true,
+      };
+    }
+    return null;
   }
 
   ngOnInit(): void {
-    // Fetch job and HR options from services
-    this.reqService.getJobData().subscribe((jobs) => {
-      this.jobOptions = jobs;
-    });
+    this.getJobs();
 
-    this.reqService.getHrData().subscribe((hrData) => {
-      this.hrOptions = hrData;
-    });
-
-    // Set up autocomplete filtering
-    this.filteredJobs = this.reqForm.get('jobId')!.valueChanges.pipe(
+    this.managerComplete$ = this.managerControl.valueChanges.pipe(
       startWith(''),
-      map((value) => this.filterOptions(value, this.jobOptions))
+      debounceTime(300),
+      switchMap((value) => {
+        if (value !== '') {
+          if (value?.fullName) {
+            return of(null);
+          }
+          return this.lookup(value);
+        } else {
+          return this.lookup('');
+        }
+      })
     );
 
-    this.filteredSPOCs = this.reqForm.get('spoc')!.valueChanges.pipe(
+    this.spocComplete$ = this.spocControl.valueChanges.pipe(
       startWith(''),
-      map((value) => this.filterOptions(value, this.hrOptions))
-    );
-
-    this.filteredManagers = this.reqForm.get('manager')!.valueChanges.pipe(
-      startWith(''),
-      map((value) => this.filterOptions(value, this.hrOptions))
+      debounceTime(300),
+      switchMap((value) => {
+        if (value !== '') {
+          if (value?.fullName) {
+            return of(null);
+          }
+          return this.lookup(value);
+        } else {
+          return this.lookup('');
+        }
+      })
     );
   }
 
-  private filterOptions(value: string, options: string[]): string[] {
-    const filterValue = value.toLowerCase();
-    return options.filter((option) =>
-      option.toLowerCase().includes(filterValue)
+  lookup(value: string): Observable<any> {
+    return this.authService.hrSearch(value?.toLowerCase()).pipe(
+      // map the item property of the results as our return object
+      map((results) => results),
+      // catch errors
+      catchError((_) => {
+        return of(null);
+      })
     );
+  }
+
+  displayFullNameFn(option: UserProfile | null) {
+    console.log('Option', option);
+    return option ? option?.fullName ?? option?.email?.split('@')[0] : '';
+  }
+
+  transformList(response: ElasticSearchResponse<any>) {
+    return response.hits.hits.map((job) => {
+      return job._source;
+    });
+  }
+
+  getJobs() {
+    this.applicationService
+      .getAllJobs({
+        orderBy: 'desc',
+        limit: 500,
+        offset: 0,
+      })
+      .then((res) => {
+        this.jobs = this.transformList(res);
+        console.log('MY JOBS', this.jobs);
+      });
   }
 
   closeModal() {
     this.dialogRef.close();
   }
 
+  //  reqForm: this.formBuilder.group(
+  //         this.addressFormControls()
+  //       ),
   onSubmit() {
     if (this.reqForm.valid) {
       const formValues = this.reqForm.value;
-      this.reqService.updateJobRequisition(formValues).subscribe(
-        (response) => {
-          console.log('Job requisition updated successfully:', response);
-          this.dialogRef.close(true);
-        },
-        (error) => {
-          console.error('Error updating job requisition:', error);
-        }
-      );
+      formValues.manager = formValues.manager.id;
+      console.log(formValues);
+      // this.reqService.updateJobRequisition(formValues).subscribe(
+      //   (response) => {
+      //     console.log('Job requisition updated successfully:', response);
+      //     this.dialogRef.close(true);
+      //   },
+      //   (error) => {
+      //     console.error('Error updating job requisition:', error);
+      //   }
+      // );
     }
   }
 }
 
 
-
-
 req.html
+
 
 <div class="req-edit-modal">
   <div class="req-edit-header">
@@ -108,97 +219,134 @@ req.html
       </button>
     </div>
   </div>
-
+ 
   <form [formGroup]="reqForm" (ngSubmit)="onSubmit()">
     <div class="req-edit-body">
-      <!-- Job ID -->
-      <div class="form-group ags-form-group">
-        <label for="jobId" class="form-label">Job<span class="required"></span></label>
-        <mat-form-field appearance="fill">
-          <mat-label>Choose a Job</mat-label>
-          <input
-            matInput
-            formControlName="jobId"
-            [matAutocomplete]="autoJob"
-            placeholder="Enter or select Job ID"
-          />
-          <mat-autocomplete #autoJob="matAutocomplete">
-            <mat-option *ngFor="let job of filteredJobs | async" [value]="job">
-              {{ job }}
-            </mat-option>
-          </mat-autocomplete>
-        </mat-form-field>
-      </div>
+      <div class="row">
+         <mat-form-field
+              class="example-form-field"
+          >
+            <input
+                    [formControl]="managerControl"
+                    type="text"
+                    placeholder="search manager"
+                    aria-label="string"
+                    matInput
+                    [matAutocomplete]="auto"
+                  />
+                  <mat-autocomplete
+                    [displayWith]="displayFullNameFn"
+                    #auto="matAutocomplete"
+                  >
+                    <mat-option
+                      *ngFor="
+                        let item of managerComplete$ | async;
+                        let index = index
+                      "
+                      [value]="item"
+                    >
+                      {{ item.fullName ?? item.email.split('@')[0] | titlecase }}
+                    </mat-option>
+                  </mat-autocomplete>
+            </mat-form-field>
 
-      <!-- Requisition ID -->
-      <div class="form-group ags-form-group">
-        <label for="requisitionId" class="form-label">Requisition ID<span class="required"></span></label>
-        <mat-form-field appearance="fill">
-          <mat-label>Requisition ID</mat-label>
-          <input matInput formControlName="requisitionId" placeholder="Enter requisition ID" />
-        </mat-form-field>
-      </div>
 
-      <!-- SPOC -->
-      <div class="form-group ags-form-group">
-        <label for="spoc" class="form-label">SPOC<span class="required"></span></label>
-        <mat-form-field appearance="fill">
-          <mat-label>Choose SPOC</mat-label>
-          <input
-            matInput
-            formControlName="spoc"
-            [matAutocomplete]="autoSPOC"
-            placeholder="Enter or select SPOC"
-          />
-          <mat-autocomplete #autoSPOC="matAutocomplete">
-            <mat-option *ngFor="let spoc of filteredSPOCs | async" [value]="spoc">
-              {{ spoc }}
-            </mat-option>
-          </mat-autocomplete>
-        </mat-form-field>
-      </div>
+           <mat-form-field
+              class="example-form-field"
+            >
+            <input
+                    [formControl]="spocControl"
+                    type="text"
+                    placeholder="search spoc"
+                    aria-label="string"
+                    matInput
+                    [matAutocomplete]="auto"
+                  />
+                  <mat-autocomplete
+                    [displayWith]="displayFullNameFn"
+                    #auto="matAutocomplete"
+                  >
+                    <mat-option
+                      *ngFor="
+                        let item of spocComplete$ | async;
+                        let index = index
+                      "
+                      [value]="item"
+                    >
+                      {{ item.fullName ?? item.email.split('@')[0] | titlecase }}
+                    </mat-option>
+                  </mat-autocomplete>
+            </mat-form-field>
 
-      <!-- Closure Date -->
-      <div class="form-group ags-form-group">
-        <label for="closureDate" class="form-label">Closure Date<span class="required"></span></label>
-        <mat-form-field appearance="fill">
-          <mat-label>Closure Date</mat-label>
-          <input matInput formControlName="closureDate" type="date" />
-        </mat-form-field>
-      </div>
+            <div class="form-group form-inner">
+            <label class="form-label" for="job"
+              >Job<span class="required"></span
+            ></label>
+            <mat-form-field
+            
+              class="example-form-field"
+            >
+              <mat-select name="job" multiple="false" formControlName="jobId">
+                <mat-option *ngFor="let job of jobs" [value]="job.id">
+                  {{ job.jobTitle | textFill }} -
+                  {{ job.location | textFill | startCase }}
+                  ({{ job.experienceLevel | textFill }})
+                </mat-option>
+              </mat-select>
 
-      <!-- Onboarding Date -->
-      <div class="form-group ags-form-group">
-        <label for="onboardingDate" class="form-label">Onboarding Date<span class="required"></span></label>
-        <mat-form-field appearance="fill">
-          <mat-label>Onboarding Date</mat-label>
-          <input matInput formControlName="onboardingDate" type="date" />
-        </mat-form-field>
-      </div>
+            </mat-form-field>
+          </div>
+        <div class="col-lg-4 col-sm-4" *ngFor="let field of formFields">
+          <div class="form-group ags-form-group">
+            <label for="{{ field.name }}" class="form-label"
+              >{{ field.label }}<span class="required"></span
+            ></label>
+            <mat-form-field>
+              <input
+                matInput
+                [formControlName]="field.name"
+                [placeholder]="field.placeholder"
+                [type]="field.type"
+                required
+              />
+            </mat-form-field>
+          </div>
+        </div>
 
-      <!-- Manager -->
-      <div class="form-group ags-form-group">
-        <label for="manager" class="form-label">Manager<span class="required"></span></label>
-        <mat-form-field appearance="fill">
-          <mat-label>Choose Manager</mat-label>
-          <input
-            matInput
-            formControlName="manager"
-            [matAutocomplete]="autoManager"
-            placeholder="Enter or select Manager"
-          />
-          <mat-autocomplete #autoManager="matAutocomplete">
-            <mat-option *ngFor="let manager of filteredManagers | async" [value]="manager">
-              {{ manager }}
-            </mat-option>
-          </mat-autocomplete>
-        </mat-form-field>
+        <!-- <div class="col-lg-6 col-sm-6">
+          <div class="form-group ags-form-group">
+            <label for="published" class="form-label"
+              >Publish<span class="required"></span
+            ></label>
+            <mat-radio-group formControlName="published">
+              <mat-radio-button value="true">Yes</mat-radio-button>
+              <mat-radio-button value="false">No</mat-radio-button>
+            </mat-radio-group>
+          </div>
+        </div> -->
       </div>
     </div>
 
     <div class="req-edit-footer">
-      <button mat-dialog-close class="ags-outline-btn">Cancel</button>
-      <button type="submit" [disabled]="reqForm.invalid" class="ags-primary-btn">Submit</button>
+      <div>
+        <button
+          title="Cancel"
+          mat-dialog-close
+          class="ags-outline-btn ags-hmd44 btn-font16 ags-padding1624"
+        >
+          Cancel
+        </button>
+      </div>
+      <div>
+        <button
+          title="Submit"
+          type="submit"
+          class="ags-primary-btn ags-hmd44 btn-font16 ags-padding1624"
+          [disabled]="reqForm.invalid"
+        >
+          Publish
+        </button>
+      </div>
     </div>
   </form>
 </div>
