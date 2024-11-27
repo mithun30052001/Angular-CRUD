@@ -13,7 +13,7 @@ import { ElasticSearchResponse } from '@/src/app/interfaces/app-interface';
 import { ApplicationService } from '@/src/app/shared/services/job-application.service';
 import { AuthService } from '@/src/app/shared/services/auth.service';
 import { Observable, of } from 'rxjs';
-import { catchError, debounceTime, map, switchMap, startWith } from 'rxjs/operators';
+import { debounceTime, switchMap, startWith, catchError, map } from 'rxjs/operators';
 
 @Component({
   selector: 'app-req-mapping-edit-dialog',
@@ -23,12 +23,11 @@ import { catchError, debounceTime, map, switchMap, startWith } from 'rxjs/operat
 export class ReqMappingEditDialogComponent implements OnInit {
   reqForm: FormGroup;
   jobs: Job[] = [];
-  hrUsers: any[] = [];
-  
-  // Autocomplete fields
-  jobAutoCompleteControl = new FormControl();
-  spocAutoCompleteControl = new FormControl();
-  managerAutoCompleteControl = new FormControl();
+  hrDetails: any[] = [];
+
+  jobAutoComplete$: Observable<Job[]> = of([]);
+  spocAutoComplete$: Observable<any[]> = of([]);
+  managerAutoComplete$: Observable<any[]> = of([]);
 
   constructor(
     private dialogRef: MatDialogRef<ReqMappingEditDialogComponent>,
@@ -51,38 +50,57 @@ export class ReqMappingEditDialogComponent implements OnInit {
 
   ngOnInit(): void {
     this.getJobs();
-    this.getHRUsers();
+    this.getHrDetails();
 
-    // Set initial values if data exists
-    if (this.data) {
-      this.reqForm.patchValue({
-        jobId: this.data.jobId,
-        requisitionId: this.data.requisitionId,
-        spoc: this.data.spoc,
-        manager: this.data.manager,
-        closureDate: this.data.closureDate,
-        onboardingDate: this.data.onboardingDate,
-        published: this.data.published,
-      });
-    }
-
-    this.jobAutoCompleteControl.valueChanges.pipe(
+    this.jobAutoComplete$ = this.reqForm.get('jobId')?.valueChanges.pipe(
+      startWith(''),
       debounceTime(300),
-      switchMap((value) => this.lookupJob(value))
-    ).subscribe();
+      switchMap((value) => this.lookupJobs(value))
+    );
 
-    this.spocAutoCompleteControl.valueChanges.pipe(
+    this.spocAutoComplete$ = this.reqForm.get('spoc')?.valueChanges.pipe(
+      startWith(''),
       debounceTime(300),
-      switchMap((value) => this.lookupHR(value))
-    ).subscribe();
+      switchMap((value) => this.lookupSpoc(value))
+    );
 
-    this.managerAutoCompleteControl.valueChanges.pipe(
+    this.managerAutoComplete$ = this.reqForm.get('manager')?.valueChanges.pipe(
+      startWith(''),
       debounceTime(300),
-      switchMap((value) => this.lookupHR(value))
-    ).subscribe();
+      switchMap((value) => this.lookupManager(value))
+    );
   }
 
-  // Fetch job listings for autocomplete
+  lookupJobs(value: string): Observable<Job[]> {
+    if (value) {
+      return this.applicationService.getAllJobs({ search: value, limit: 10 }).pipe(
+        map((res) => this.transformList(res)),
+        catchError(() => of([]))
+      );
+    } else {
+      return of([]);
+    }
+  }
+
+  lookupSpoc(value: string): Observable<any[]> {
+    return this.lookupHr(value);
+  }
+
+  lookupManager(value: string): Observable<any[]> {
+    return this.lookupHr(value);
+  }
+
+  lookupHr(value: string): Observable<any[]> {
+    return this.authService.hrSearch(value.toLowerCase()).pipe(
+      map((results) => results),
+      catchError(() => of([]))
+    );
+  }
+
+  transformList(response: ElasticSearchResponse<any>) {
+    return response.hits.hits.map((item) => item._source);
+  }
+
   getJobs() {
     this.applicationService
       .getAllJobs({
@@ -95,40 +113,10 @@ export class ReqMappingEditDialogComponent implements OnInit {
       });
   }
 
-  // HR User lookup for spoc and manager autocomplete
-  getHRUsers() {
-    this.authService.hrSearch('').subscribe((users) => {
-      this.hrUsers = users;
+  getHrDetails() {
+    this.authService.getHrList().then((hrList) => {
+      this.hrDetails = hrList;
     });
-  }
-
-  // Transform list response
-  transformList(response: ElasticSearchResponse<any>) {
-    return response.hits.hits.map((job) => {
-      return job._source;
-    });
-  }
-
-  // Job lookup for autocomplete
-  lookupJob(value: string): Observable<any> {
-    if (value) {
-      return this.applicationService.searchJobs(value).pipe(
-        map((results) => results),
-        catchError(() => of([]))
-      );
-    }
-    return of([]);
-  }
-
-  // HR lookup for autocomplete
-  lookupHR(value: string): Observable<any> {
-    if (value) {
-      return this.authService.hrSearch(value).pipe(
-        map((results) => results),
-        catchError(() => of([]))
-      );
-    }
-    return of([]);
   }
 
   closeModal() {
@@ -167,8 +155,72 @@ req.html
   <form [formGroup]="reqForm" (ngSubmit)="onSubmit()">
     <div class="req-edit-body">
       <div class="row">
+        <!-- Job Field -->
+        <div class="col-lg-6 col-sm-6">
+          <div class="form-group ags-form-group">
+            <label for="jobId" class="form-label">Job<span class="required"></span></label>
+            <mat-form-field>
+              <input
+                matInput
+                placeholder="Search for a job"
+                [formControlName]="'jobId'"
+                [matAutocomplete]="jobAuto"
+                required
+              />
+              <mat-autocomplete #jobAuto="matAutocomplete">
+                <mat-option *ngFor="let job of jobAutoComplete$ | async" [value]="job">
+                  {{ job.jobTitle }} - {{ job.location }} ({{ job.experienceLevel }})
+                </mat-option>
+              </mat-autocomplete>
+            </mat-form-field>
+          </div>
+        </div>
+
+        <!-- SPOC Field -->
+        <div class="col-lg-6 col-sm-6">
+          <div class="form-group ags-form-group">
+            <label for="spoc" class="form-label">SPOC<span class="required"></span></label>
+            <mat-form-field>
+              <input
+                matInput
+                placeholder="Search SPOC"
+                [formControlName]="'spoc'"
+                [matAutocomplete]="spocAuto"
+                required
+              />
+              <mat-autocomplete #spocAuto="matAutocomplete">
+                <mat-option *ngFor="let spoc of spocAutoComplete$ | async" [value]="spoc">
+                  {{ spoc.fullName }}
+                </mat-option>
+              </mat-autocomplete>
+            </mat-form-field>
+          </div>
+        </div>
+
+        <!-- Manager Field -->
+        <div class="col-lg-6 col-sm-6">
+          <div class="form-group ags-form-group">
+            <label for="manager" class="form-label">Manager<span class="required"></span></label>
+            <mat-form-field>
+              <input
+                matInput
+                placeholder="Search Manager"
+                [formControlName]="'manager'"
+                [matAutocomplete]="managerAuto"
+                required
+              />
+              <mat-autocomplete #managerAuto="matAutocomplete">
+                <mat-option *ngFor="let manager of managerAutoComplete$ | async" [value]="manager">
+                  {{ manager.fullName }}
+                </mat-option>
+              </mat-autocomplete>
+            </mat-form-field>
+          </div>
+        </div>
+
+        <!-- Other Fields -->
         <div class="col-lg-6 col-sm-6" *ngFor="let field of formFields">
-          <div class="form-group ags-form-group" *ngIf="field.name !== 'spoc' && field.name !== 'manager' && field.name !== 'jobId'">
+          <div class="form-group ags-form-group">
             <label for="{{field.name}}" class="form-label">{{field.label}}<span class="required"></span></label>
             <mat-form-field>
               <input
@@ -180,65 +232,9 @@ req.html
               />
             </mat-form-field>
           </div>
-
-          <!-- Job Autocomplete -->
-          <div class="form-group ags-form-group" *ngIf="field.name === 'jobId'">
-            <label for="jobId" class="form-label">Job<span class="required"></span></label>
-            <mat-form-field>
-              <input
-                matInput
-                [formControl]="jobAutoCompleteControl"
-                placeholder="Search Job"
-                [matAutocomplete]="autoJob"
-                required
-              />
-              <mat-autocomplete #autoJob="matAutocomplete">
-                <mat-option *ngFor="let job of jobs" [value]="job">
-                  {{ job.jobTitle }} - {{ job.location }}
-                </mat-option>
-              </mat-autocomplete>
-            </mat-form-field>
-          </div>
-
-          <!-- SPOC Autocomplete -->
-          <div class="form-group ags-form-group" *ngIf="field.name === 'spoc'">
-            <label for="spoc" class="form-label">SPOC<span class="required"></span></label>
-            <mat-form-field>
-              <input
-                matInput
-                [formControl]="spocAutoCompleteControl"
-                placeholder="Search SPOC"
-                [matAutocomplete]="autoSpoc"
-                required
-              />
-              <mat-autocomplete #autoSpoc="matAutocomplete">
-                <mat-option *ngFor="let user of hrUsers" [value]="user">
-                  {{ user.fullName || user.email }}
-                </mat-option>
-              </mat-autocomplete>
-            </mat-form-field>
-          </div>
-
-          <!-- Manager Autocomplete -->
-          <div class="form-group ags-form-group" *ngIf="field.name === 'manager'">
-            <label for="manager" class="form-label">Manager<span class="required"></span></label>
-            <mat-form-field>
-              <input
-                matInput
-                [formControl]="managerAutoCompleteControl"
-                placeholder="Search Manager"
-                [matAutocomplete]="autoManager"
-                required
-              />
-              <mat-autocomplete #autoManager="matAutocomplete">
-                <mat-option *ngFor="let user of hrUsers" [value]="user">
-                  {{ user.fullName || user.email }}
-                </mat-option>
-              </mat-autocomplete>
-            </mat-form-field>
-          </div>
         </div>
 
+        <!-- Publish Radio Buttons -->
         <div class="col-lg-6 col-sm-6">
           <div class="form-group ags-form-group">
             <label for="published" class="form-label">Publish<span class="required"></span></label>
@@ -251,6 +247,7 @@ req.html
       </div>
     </div>
 
+    <!-- Footer with Save and Cancel -->
     <div class="req-edit-footer">
       <div>
         <button
@@ -274,3 +271,4 @@ req.html
     </div>
   </form>
 </div>
+
