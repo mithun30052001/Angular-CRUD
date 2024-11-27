@@ -272,3 +272,41 @@ req.html
   </form>
 </div>
 
+formFields = [
+    {
+      name: 'jobId',
+      label: 'Job',
+      placeholder: 'Enter job ID',
+      type: 'text',
+    },
+    {
+      name: 'requisitionId',
+      label: 'Requisition ID',
+      placeholder: 'Enter requisition ID',
+      type: 'text',
+    },
+    {
+      name: 'spoc',
+      label: 'SPOC',
+      placeholder: 'Enter SPOC name',
+      type: 'text',
+    },
+    {
+      name: 'closureDate',
+      label: 'Closure Date',
+      placeholder: 'Enter closure date',
+      type: 'date',
+    },
+    {
+      name: 'onboardingDate',
+      label: 'Onboarding Date',
+      placeholder: 'Enter onboarding date',
+      type: 'date',
+    },
+    {
+      name: 'manager',
+      label: 'Manager',
+      placeholder: 'Enter manager name',
+      type: 'text',
+    },
+  ];
