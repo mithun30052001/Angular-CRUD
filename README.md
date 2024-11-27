@@ -1,278 +1,351 @@
 https://teams.microsoft.com/l/meetup-join/19%3ameeting_ODliN2VjZjktZjM2MS00OGQ4LWFhMzUtZjAwNTJkMTRkY2Y4%40thread.v2/0?context=%7b%22Tid%22%3a%22f6fb95f2-bd20-41a4-b19a-c7fcf96d09a7%22%2c%22Oid%22%3a%2238c62280-1dc6-4ce5-b5b4-8a068650cb44%22%7d
 
+hr-edit.component.ts
 
-req.ts
+<!-- Mobile View -->
 
-import { Component, Inject, OnInit } from '@angular/core';
+<div class="quick-edit-modal">
+  <form [formGroup]="form" novalidate>
+    <div class="heading">
+      <div class="heading-text">Job Management</div>
+      <div>
+        <app-icon icon="close" (click)="closeModal()"></app-icon>
+      </div>
+    </div>
+    <div class="quick-edit-body">
+      <div class="row">
+        <div class="col-sm-12">
+          <div class="form-group form-inner">
+            <label class="form-label" for="hr"
+              >Tag HR<span class="required"></span
+            ></label>
+            <mat-form-field
+              [matTooltip]="
+                f['hr'].disabled ? 'Only admin users can update this field' : ''
+              "
+              class="example-form-field"
+            >
+              <!-- <mat-select name="hr" multiple="false" formControlName="hr">
+                <mat-option
+                  *ngFor="let option of hrDetailList"
+                  [value]="option.id"
+                >
+                  {{ option.email }}
+                </mat-option>
+              </mat-select> -->
+              <input
+                [formControl]="autoCompleteControl"
+                type="text"
+                placeholder="search HR"
+                aria-label="string"
+                matInput
+                [matAutocomplete]="auto"
+              />
+              <mat-autocomplete
+                [displayWith]="displayFullNameFn"
+                autoActiveFirstOption
+                #auto="matAutocomplete"
+              >
+                <mat-option
+                  *ngFor="
+                    let item of hrAutoComplete$ | async;
+                    let index = index
+                  "
+                  [value]="item"
+                >
+                  {{ item.fullName ?? item.email.split('@')[0] | titlecase }}
+                </mat-option>
+              </mat-autocomplete>
+            </mat-form-field>
+            <div
+              *ngIf="f['hr'].touched && f['hr'].dirty && f['hr'].invalid"
+              class="form-invalid"
+            >
+              <p>HR is mandatory</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Status -->
+      <div class="row">
+        <div class="col-sm-12">
+          <div class="form-group form-inner">
+            <label class="form-label" for="job"
+              >Job<span class="required"></span
+            ></label>
+            <mat-form-field
+              [matTooltip]="
+                f['jobId'].disabled ? 'Cannot change job right now' : ''
+              "
+              class="example-form-field"
+            >
+              <mat-select name="job" multiple="false" formControlName="jobId">
+                <mat-option *ngFor="let job of jobs" [value]="job.id">
+                  {{ job.jobTitle | textFill }} -
+                  {{ job.location | textFill | startCase }}
+                  ({{ job.experienceLevel | textFill }})
+                </mat-option>
+              </mat-select>
+
+              <div
+                *ngIf="
+                  f['jobId'].touched && f['jobId'].dirty && f['jobId'].invalid
+                "
+                class="form-invalid"
+              >
+                <p>Job is mandatory</p>
+              </div>
+            </mat-form-field>
+          </div>
+        </div>
+      </div>
+
+      <!-- Remarks -->
+      <!-- <div class="row">
+        <div class="col-sm-12">
+          <div class="form-inner">
+            <label class="form-label" for="remarks">Remarks</label>
+            <div>
+              <input
+                name="remarks"
+                matInput
+                formControlName="remark"
+                class="form-control"
+                placeholder="Remarks"
+              />
+              <div
+                *ngIf="
+                  f['remark'].touched &&
+                  f['remark'].dirty &&
+                  f['remark'].invalid
+                "
+                class="form-invalid"
+              >
+                <p>Cannot exceed 200 characters</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div> -->
+    </div>
+    <div class="quick-edit-footer">
+      <div class="row justify-content-end">
+        <div class="col-sm-2">
+          <button
+            title="Save"
+            class="ags-primary-btn ags-hlg48 ags-padding1216 btn-font16"
+            (click)="submitForm()"
+            [disabled]="
+              form.invalid || (f['hr'].disabled && f['jobId'].disabled)
+            "
+          >
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+
+
+hr-edit.component.html
+
+<!-- Mobile View -->
+
+<div class="quick-edit-modal">
+  <form [formGroup]="form" novalidate>
+    <div class="heading">
+      <div class="heading-text">Job Management</div>
+      <div>
+        <app-icon icon="close" (click)="closeModal()"></app-icon>
+      </div>
+    </div>
+    <div class="quick-edit-body">
+      <div class="row">
+        <div class="col-sm-12">
+          <div class="form-group form-inner">
+            <label class="form-label" for="hr"
+              >Tag HR<span class="required"></span
+            ></label>
+            <mat-form-field
+              [matTooltip]="
+                f['hr'].disabled ? 'Only admin users can update this field' : ''
+              "
+              class="example-form-field"
+            >
+              <!-- <mat-select name="hr" multiple="false" formControlName="hr">
+                <mat-option
+                  *ngFor="let option of hrDetailList"
+                  [value]="option.id"
+                >
+                  {{ option.email }}
+                </mat-option>
+              </mat-select> -->
+              <input
+                [formControl]="autoCompleteControl"
+                type="text"
+                placeholder="search HR"
+                aria-label="string"
+                matInput
+                [matAutocomplete]="auto"
+              />
+              <mat-autocomplete
+                [displayWith]="displayFullNameFn"
+                autoActiveFirstOption
+                #auto="matAutocomplete"
+              >
+                <mat-option
+                  *ngFor="
+                    let item of hrAutoComplete$ | async;
+                    let index = index
+                  "
+                  [value]="item"
+                >
+                  {{ item.fullName ?? item.email.split('@')[0] | titlecase }}
+                </mat-option>
+              </mat-autocomplete>
+            </mat-form-field>
+            <div
+              *ngIf="f['hr'].touched && f['hr'].dirty && f['hr'].invalid"
+              class="form-invalid"
+            >
+              <p>HR is mandatory</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Status -->
+      <div class="row">
+        <div class="col-sm-12">
+          <div class="form-group form-inner">
+            <label class="form-label" for="job"
+              >Job<span class="required"></span
+            ></label>
+            <mat-form-field
+              [matTooltip]="
+                f['jobId'].disabled ? 'Cannot change job right now' : ''
+              "
+              class="example-form-field"
+            >
+              <mat-select name="job" multiple="false" formControlName="jobId">
+                <mat-option *ngFor="let job of jobs" [value]="job.id">
+                  {{ job.jobTitle | textFill }} -
+                  {{ job.location | textFill | startCase }}
+                  ({{ job.experienceLevel | textFill }})
+                </mat-option>
+              </mat-select>
+
+              <div
+                *ngIf="
+                  f['jobId'].touched && f['jobId'].dirty && f['jobId'].invalid
+                "
+                class="form-invalid"
+              >
+                <p>Job is mandatory</p>
+              </div>
+            </mat-form-field>
+          </div>
+        </div>
+      </div>
+
+      <!-- Remarks -->
+      <!-- <div class="row">
+        <div class="col-sm-12">
+          <div class="form-inner">
+            <label class="form-label" for="remarks">Remarks</label>
+            <div>
+              <input
+                name="remarks"
+                matInput
+                formControlName="remark"
+                class="form-control"
+                placeholder="Remarks"
+              />
+              <div
+                *ngIf="
+                  f['remark'].touched &&
+                  f['remark'].dirty &&
+                  f['remark'].invalid
+                "
+                class="form-invalid"
+              >
+                <p>Cannot exceed 200 characters</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div> -->
+    </div>
+    <div class="quick-edit-footer">
+      <div class="row justify-content-end">
+        <div class="col-sm-2">
+          <button
+            title="Save"
+            class="ags-primary-btn ags-hlg48 ags-padding1216 btn-font16"
+            (click)="submitForm()"
+            [disabled]="
+              form.invalid || (f['hr'].disabled && f['jobId'].disabled)
+            "
+          >
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+req-mapping-edit-dialog.component.ts
+
+import { Component, Inject } from '@angular/core';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { ReqService } from '@/src/app/shared/services/req.service';
-import { FormBuilder, FormGroup, Validators, FormControl } from '@angular/forms';
+import {
+  FormBuilder,
+  FormGroup,
+  Validators,
+  FormControl,
+} from '@angular/forms';
 import { Requisition } from '../req-mapping/req-mapping.component';
-import { Job } from '@/src/app/shared/services/job-posting.service';
-import { ElasticSearchResponse } from '@/src/app/interfaces/app-interface';
-import { ApplicationService } from '@/src/app/shared/services/job-application.service';
-import { AuthService } from '@/src/app/shared/services/auth.service';
-import { Observable, of } from 'rxjs';
-import { debounceTime, switchMap, startWith, catchError, map } from 'rxjs/operators';
 
 @Component({
   selector: 'app-req-mapping-edit-dialog',
   templateUrl: './req-mapping-edit-dialog.component.html',
   styleUrls: ['./req-mapping-edit-dialog.component.scss'],
 })
-export class ReqMappingEditDialogComponent implements OnInit {
+export class ReqMappingEditDialogComponent {
   reqForm: FormGroup;
-  jobs: Job[] = [];
-  hrDetails: any[] = [];
-
-  jobAutoComplete$: Observable<Job[]> = of([]);
-  spocAutoComplete$: Observable<any[]> = of([]);
-  managerAutoComplete$: Observable<any[]> = of([]);
-
-  constructor(
-    private dialogRef: MatDialogRef<ReqMappingEditDialogComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: Requisition,
-    private reqService: ReqService,
-    private fb: FormBuilder,
-    private applicationService: ApplicationService,
-    private authService: AuthService
-  ) {
-    this.reqForm = this.fb.group({
-      jobId: ['', Validators.required],
-      requisitionId: ['', Validators.required],
-      spoc: ['', Validators.required],
-      closureDate: ['', Validators.required],
-      onboardingDate: ['', Validators.required],
-      manager: ['', Validators.required],
-      published: [true, Validators.required],
-    });
-  }
-
-  ngOnInit(): void {
-    this.getJobs();
-    this.getHrDetails();
-
-    this.jobAutoComplete$ = this.reqForm.get('jobId')?.valueChanges.pipe(
-      startWith(''),
-      debounceTime(300),
-      switchMap((value) => this.lookupJobs(value))
-    );
-
-    this.spocAutoComplete$ = this.reqForm.get('spoc')?.valueChanges.pipe(
-      startWith(''),
-      debounceTime(300),
-      switchMap((value) => this.lookupSpoc(value))
-    );
-
-    this.managerAutoComplete$ = this.reqForm.get('manager')?.valueChanges.pipe(
-      startWith(''),
-      debounceTime(300),
-      switchMap((value) => this.lookupManager(value))
-    );
-  }
-
-  lookupJobs(value: string): Observable<Job[]> {
-    if (value) {
-      return this.applicationService.getAllJobs({ search: value, limit: 10 }).pipe(
-        map((res) => this.transformList(res)),
-        catchError(() => of([]))
-      );
-    } else {
-      return of([]);
-    }
-  }
-
-  lookupSpoc(value: string): Observable<any[]> {
-    return this.lookupHr(value);
-  }
-
-  lookupManager(value: string): Observable<any[]> {
-    return this.lookupHr(value);
-  }
-
-  lookupHr(value: string): Observable<any[]> {
-    return this.authService.hrSearch(value.toLowerCase()).pipe(
-      map((results) => results),
-      catchError(() => of([]))
-    );
-  }
-
-  transformList(response: ElasticSearchResponse<any>) {
-    return response.hits.hits.map((item) => item._source);
-  }
-
-  getJobs() {
-    this.applicationService
-      .getAllJobs({
-        orderBy: 'desc',
-        limit: 500,
-        offset: 0,
-      })
-      .then((res) => {
-        this.jobs = this.transformList(res);
-      });
-  }
-
-  getHrDetails() {
-    this.authService.getHrList().then((hrList) => {
-      this.hrDetails = hrList;
-    });
-  }
-
-  closeModal() {
-    this.dialogRef.close();
-  }
-
-  onSubmit() {
-    if (this.reqForm.valid) {
-      const formValues = this.reqForm.value;
-      formValues.published = formValues.published === 'true' ? true : false;
-      this.reqService.updateJobRequisition(formValues).subscribe(
-        (response) => {
-          console.log('Job requisition updated successfully:', response);
-          this.dialogRef.close(true);
-        },
-        (error) => {
-          console.error('Error updating job requisition:', error);
-        }
-      );
-    }
-  }
-}
-
-
-req.html
-
-<div class="req-edit-modal">
-  <div class="req-edit-header">
-    <h5 class="heading-text">Req Mapping Edit</h5>
-    <div>
-      <button class="close-btn" (click)="closeModal()">
-        <app-icon class="app-icon" icon="close"></app-icon>
-      </button>
-    </div>
-  </div>
-  <form [formGroup]="reqForm" (ngSubmit)="onSubmit()">
-    <div class="req-edit-body">
-      <div class="row">
-        <!-- Job Field -->
-        <div class="col-lg-6 col-sm-6">
-          <div class="form-group ags-form-group">
-            <label for="jobId" class="form-label">Job<span class="required"></span></label>
-            <mat-form-field>
-              <input
-                matInput
-                placeholder="Search for a job"
-                [formControlName]="'jobId'"
-                [matAutocomplete]="jobAuto"
-                required
-              />
-              <mat-autocomplete #jobAuto="matAutocomplete">
-                <mat-option *ngFor="let job of jobAutoComplete$ | async" [value]="job">
-                  {{ job.jobTitle }} - {{ job.location }} ({{ job.experienceLevel }})
-                </mat-option>
-              </mat-autocomplete>
-            </mat-form-field>
-          </div>
-        </div>
-
-        <!-- SPOC Field -->
-        <div class="col-lg-6 col-sm-6">
-          <div class="form-group ags-form-group">
-            <label for="spoc" class="form-label">SPOC<span class="required"></span></label>
-            <mat-form-field>
-              <input
-                matInput
-                placeholder="Search SPOC"
-                [formControlName]="'spoc'"
-                [matAutocomplete]="spocAuto"
-                required
-              />
-              <mat-autocomplete #spocAuto="matAutocomplete">
-                <mat-option *ngFor="let spoc of spocAutoComplete$ | async" [value]="spoc">
-                  {{ spoc.fullName }}
-                </mat-option>
-              </mat-autocomplete>
-            </mat-form-field>
-          </div>
-        </div>
-
-        <!-- Manager Field -->
-        <div class="col-lg-6 col-sm-6">
-          <div class="form-group ags-form-group">
-            <label for="manager" class="form-label">Manager<span class="required"></span></label>
-            <mat-form-field>
-              <input
-                matInput
-                placeholder="Search Manager"
-                [formControlName]="'manager'"
-                [matAutocomplete]="managerAuto"
-                required
-              />
-              <mat-autocomplete #managerAuto="matAutocomplete">
-                <mat-option *ngFor="let manager of managerAutoComplete$ | async" [value]="manager">
-                  {{ manager.fullName }}
-                </mat-option>
-              </mat-autocomplete>
-            </mat-form-field>
-          </div>
-        </div>
-
-        <!-- Other Fields -->
-        <div class="col-lg-6 col-sm-6" *ngFor="let field of formFields">
-          <div class="form-group ags-form-group">
-            <label for="{{field.name}}" class="form-label">{{field.label}}<span class="required"></span></label>
-            <mat-form-field>
-              <input
-                matInput
-                [formControlName]="field.name"
-                [placeholder]="field.placeholder"
-                [type]="field.type"
-                required
-              />
-            </mat-form-field>
-          </div>
-        </div>
-
-        <!-- Publish Radio Buttons -->
-        <div class="col-lg-6 col-sm-6">
-          <div class="form-group ags-form-group">
-            <label for="published" class="form-label">Publish<span class="required"></span></label>
-            <mat-radio-group formControlName="published">
-              <mat-radio-button value="true">Yes</mat-radio-button>
-              <mat-radio-button value="false">No</mat-radio-button>
-            </mat-radio-group>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Footer with Save and Cancel -->
-    <div class="req-edit-footer">
-      <div>
-        <button
-          title="Cancel"
-          mat-dialog-close
-          class="ags-outline-btn ags-hmd44 btn-font16 ags-padding1624"
-        >
-          Cancel
-        </button>
-      </div>
-      <div>
-        <button
-          title="Submit"
-          type="submit"
-          class="ags-primary-btn ags-hmd44 btn-font16 ags-padding1624"
-          [disabled]="reqForm.invalid"
-        >
-          Save
-        </button>
-      </div>
-    </div>
-  </form>
-</div>
-
-formFields = [
+  form: FormGroup = new FormGroup({
+    reqForm: new FormGroup({
+      jobId: new FormControl(''),
+      requisitionId: new FormControl(''),
+      spoc: new FormControl(''),
+      closureDate: new FormControl(''),
+      onboardingDate: new FormControl(''),
+      manager: new FormControl(''),
+      // country: new FormControl(''),
+      // pinCode: new FormControl(0),
+      // code: new FormControl<number>(0),
+    }),
+  });
+  formFields = [
     {
       name: 'jobId',
       label: 'Job',
@@ -310,3 +383,166 @@ formFields = [
       type: 'text',
     },
   ];
+
+  constructor(
+    private dialogRef: MatDialogRef<ReqMappingEditDialogComponent>,
+    @Inject(MAT_DIALOG_DATA) public rowData: Requisition,
+    private reqService: ReqService,
+    private fb: FormBuilder,
+    private formBuilder: FormBuilder
+  ) {
+    this.reqForm = this.fb.group({
+      jobId: ['', Validators.required],
+      requisitionId: ['', Validators.required],
+      spoc: ['', Validators.required],
+      closureDate: ['', Validators.required],
+      onboardingDate: ['', Validators.required],
+      manager: ['', Validators.required],
+      published: [true, Validators.required],
+    });
+    console.log('DIALOG DATA', rowData);
+  }
+
+  closeModal() {
+    this.dialogRef.close();
+  }
+
+  //  reqForm: this.formBuilder.group(
+  //         this.addressFormControls()
+  //       ),
+  onSubmit() {
+    if (this.reqForm.valid) {
+      const formValues = this.reqForm.value;
+      formValues.published = formValues.published === 'true' ? true : false;
+      this.reqService.updateJobRequisition(formValues).subscribe(
+        (response) => {
+          console.log('Job requisition updated successfully:', response);
+          this.dialogRef.close(true);
+        },
+        (error) => {
+          console.error('Error updating job requisition:', error);
+        }
+      );
+    }
+  }
+}
+
+
+req-mapping-edit-dialog.component.html
+
+
+<div class="req-edit-modal">
+  <div class="req-edit-header">
+    <h5 class="heading-text">Req Mapping Edit</h5>
+    <div>
+      <button class="close-btn" (click)="closeModal()">
+        <app-icon class="app-icon" icon="close"></app-icon>
+      </button>
+    </div>
+  </div>
+  <div class="bodyinfo">
+    <div class="row">
+      <div class="col-sm-3">
+        <div class="info-inner">
+          <h5>Request Type</h5>
+          <p>{{ rowData.requestType }}</p>
+        </div>
+      </div>
+
+      <div class="col-sm-3">
+        <div class="info-inner">
+          <h5>Requisition ID</h5>
+          <p>{{ rowData.requisitionId }}</p>
+        </div>
+      </div>
+      <div class="col-sm-3">
+        <div class="info-inner">
+          <h5>Process</h5>
+          <p>{{ rowData.process }}</p>
+        </div>
+      </div>
+      <div class="col-sm-3">
+        <div class="info-inner">
+          <h5>Client</h5>
+          <p>{{ rowData.clientName }}</p>
+        </div>
+      </div>
+      <div class="col-sm-3">
+        <div class="info-inner">
+          <h5>Speciality</h5>
+          <p>{{ rowData.speciality }}</p>
+        </div>
+      </div>
+      <div class="col-sm-3">
+        <div class="info-inner">
+          <h5>Job Type</h5>
+          <p>{{ rowData.jobType }}</p>
+        </div>
+      </div>
+      <div class="col-sm-3">
+        <div class="info-inner">
+          <h5>Location</h5>
+          <p>{{ rowData.location }}</p>
+        </div>
+      </div>
+      <div class="col-sm-3">
+        <div class="info-inner">
+          <h5>Shift</h5>
+          <p>{{ rowData.shift }}</p>
+        </div>
+      </div>
+      <div class="col-sm-3">
+        <div class="info-inner">
+          <h5>Open Numbers</h5>
+          <p>{{ rowData.openNumbers }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <form [formGroup]="reqForm" (ngSubmit)="onSubmit()">
+    <div class="req-edit-body">
+      <div class="row">
+        <div class="col-lg-4 col-sm-4" *ngFor="let field of formFields">
+          <div class="form-group ags-form-group">
+            <label for="{{ field.name }}" class="form-label"
+              >{{ field.label }}<span class="required"></span
+            ></label>
+            <mat-form-field>
+              <input
+                matInput
+                [formControlName]="field.name"
+                [placeholder]="field.placeholder"
+                [type]="field.type"
+                required
+              />
+            </mat-form-field>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="req-edit-footer">
+      <div>
+        <button
+          title="Cancel"
+          mat-dialog-close
+          class="ags-outline-btn ags-hmd44 btn-font16 ags-padding1624"
+        >
+          Cancel
+        </button>
+      </div>
+      <div>
+        <button
+          title="Submit"
+          type="submit"
+          class="ags-primary-btn ags-hmd44 btn-font16 ags-padding1624"
+          [disabled]="reqForm.invalid"
+        >
+          Publish
+        </button>
+      </div>
+    </div>
+  </form>
+</div>
+
+
