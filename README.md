@@ -29,3 +29,33 @@ export interface PeriodicElement {
   job: Job;
   remarks: string; // Assuming remarks is part of the response
 }
+
+
+const data = response.response;
+        this.dataSource = data.map((item: any) => ({
+          id: item.id,
+          createdDate: item.createdDate,
+          updatedDate: item.updatedDate,
+          active: item.active,
+          createdBy: item.createdBy,
+          updatedBy: item.updatedBy,
+          job: {
+            id: item.job.id,
+            jobTitle: item.job.jobTitle,
+            oracleJobReference: item.job.oracleJobReference,
+            location: item.job.location,
+            shift: item.job.shift,
+            shortDesc: item.job.shortDesc,
+            longDesc: item.job.longDesc,
+            openPositions: item.job.openPositions,
+            postedAt: item.job.postedAt,
+            visibility: item.job.visibility,
+            jobType: item.job.jobType,
+            processType: item.job.processType,
+            jobHours: item.job.jobHours,
+            experienceLevel: item.job.experienceLevel,
+            cashBonus: item.job.cashBonus,
+            education: item.job.education,
+          },
+          remarks: '', // Add logic to extract remarks if available
+        }));
