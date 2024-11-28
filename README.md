@@ -1,7 +1,5 @@
 https://teams.microsoft.com/l/meetup-join/19%3ameeting_ODliN2VjZjktZjM2MS00OGQ4LWFhMzUtZjAwNTJkMTRkY2Y4%40thread.v2/0?context=%7b%22Tid%22%3a%22f6fb95f2-bd20-41a4-b19a-c7fcf96d09a7%22%2c%22Oid%22%3a%2238c62280-1dc6-4ce5-b5b4-8a068650cb44%22%7d
 
-remarks-edit-dialog.ts
-
 import { Component, OnInit } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MediaMatcher } from '@angular/cdk/layout';
@@ -68,27 +66,26 @@ export class RemarksEditDialogComponent implements OnInit {
     if (this.remarkForm.valid) {
       const formData = this.remarkForm.value; // Get form data
       formData.remarks = formData.remarks.id;
-      console.log('Submitting:', formData); // Log for debugging
-      const requestData = {
-        jobRequisition: formData,
-      };
-      // Call PUT API here
-      this.reqService.updateRemarkRequisitions(requestData).subscribe({
-        next: (response) => {
-          console.log('API Response:', response);
-          // Handle successful response
-        },
-        error: (error) => {
-          console.error('Error:', error);
-          // Handle error response
-        },
-      });
+      console.log('Submitting:', this.remarkForm); // Log for debugging
+      // const requestData = {
+      //   jobRequisition: formData,
+      // };
+      // // Call PUT API here
+      // this.reqService.updateRemarkRequisitions(requestData).subscribe({
+      //   next: (response) => {
+      //     console.log('API Response:', response);
+      //     // Handle successful response
+      //   },
+      //   error: (error) => {
+      //     console.error('Error:', error);
+      //     // Handle error response
+      //   },
+      // });
     } else {
       console.log('Form is invalid'); // Log if form is invalid
     }
   }
 }
-
 
 remarks-edit-dialog.html
 
@@ -114,9 +111,9 @@ remarks-edit-dialog.html
                 <mat-form-field>
                   <input
                     matInput
-                    [formControlName]="remarks"
-                    [placeholder]="placeholder"
-                    [type]="text"
+                    formControlName="remarks"
+                    placeholder="placeholder"
+                    type="text"
                     required
                   />
                 </mat-form-field>
@@ -124,8 +121,9 @@ remarks-edit-dialog.html
             </div>
             <div class="col-sm-3">
               <button
-                (click)="onSubmit()"
                 title="Add remarks"
+                type="submit"
+                (click)="onSubmit()"
                 class="ags-primary-btn ags-hxl56 ags-padding1624 btn-font16"
               >
                 Add
@@ -204,18 +202,4 @@ remarks-edit-dialog.html
 </div>
 
 
-src/app/hr/components/remarks-edit-dialog/remarks-edit-dialog.component.html:23:40 - error TS2339: Property 'remarks' does not exist on type 'RemarksEditDialogComponent'.
 
-23                     [formControlName]="remarks"
-                                          ~~~~~~~
-
-
-src/app/hr/components/remarks-edit-dialog/remarks-edit-dialog.component.html:24:36 - error TS2339: Property 'placeholder' does not exist on type 'RemarksEditDialogComponent'.
-
-24                     [placeholder]="placeholder"
-                                      ~~~~~~~~~~~
-
-  src/app/hr/components/remarks-edit-dialog/remarks-edit-dialog.component.ts:29:16
-    29   templateUrl: './remarks-edit-dialog.component.html',
-                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    Error occurs in the template of component RemarksEditDialogComponent.
