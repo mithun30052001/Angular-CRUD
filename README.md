@@ -1,5 +1,7 @@
 https://teams.microsoft.com/l/meetup-join/19%3ameeting_ODliN2VjZjktZjM2MS00OGQ4LWFhMzUtZjAwNTJkMTRkY2Y4%40thread.v2/0?context=%7b%22Tid%22%3a%22f6fb95f2-bd20-41a4-b19a-c7fcf96d09a7%22%2c%22Oid%22%3a%2238c62280-1dc6-4ce5-b5b4-8a068650cb44%22%7d
 
+req-mapping-edit-dialog.ts
+
 import { Component, Inject } from '@angular/core';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { ReqService } from '@/src/app/shared/services/req.service';
@@ -250,5 +252,161 @@ export class ReqMappingEditDialogComponent {
         );
       }
     }
+  }
+}
+
+req-mapping.component.ts
+import { Component, OnInit } from '@angular/core';
+import { MatIconModule } from '@angular/material/icon';
+import { MatTableModule } from '@angular/material/table';
+import { SharedModule } from '../../../shared/shared.module';
+import { MatDialog } from '@angular/material/dialog';
+import { ReqMappingEditDialogComponent } from '@/src//app/hr/components/req-mapping-edit-dialog/req-mapping-edit-dialog.component';
+import { ReqUploadDialogComponent } from '../req-upload-dialog/req-upload-dialog.component';
+import { ReqService } from '@/src/app/shared/services/req.service';
+import { MatCardModule } from '@angular/material/card';
+import { MediaMatcher } from '@angular/cdk/layout';
+import { Subject } from 'rxjs';
+import { get } from 'lodash-es';
+import { Filters, MatPageEvent } from '@/src/app/interfaces/app-interface';
+import { ListFiltersComponent } from '@/src/app/shared/components/list-filters/list-filters.component';
+
+export interface PeriodicElement {
+  sjoined: string;
+  syto: string;
+  sspoc: string;
+  opennumber: string;
+  shift: string;
+  wfm: string;
+  openno: string;
+  action: string;
+}
+
+export interface Requisition {
+  id: string;
+  createdDate: string;
+  updatedDate: string;
+  active: boolean;
+  requestType: string;
+  requisitionId: string;
+  clientName: string;
+  openNumbers: number;
+  intentDate: string;
+  closureDate: string | null;
+  process: string;
+  location: string;
+  speciality: string;
+  jobType: string;
+  shift: string;
+  requisitionStatus: string;
+  spoc: string | null;
+  split: string;
+  role: string;
+  onboardingDate: string | null;
+  published: boolean;
+}
+
+const ELEMENT_DATA: PeriodicElement[] = [
+  {
+    sjoined: '20',
+    syto: '20',
+    sspoc: '20',
+    opennumber: '20',
+    shift: '20',
+    wfm: 'eee',
+    openno: 'eeee',
+    action: '',
+  },
+];
+@Component({
+  selector: 'app-req-mapping',
+  templateUrl: './req-mapping.component.html',
+  styleUrls: ['./req-mapping.component.scss'],
+  standalone: true,
+  imports: [MatTableModule, MatIconModule, SharedModule, MatCardModule],
+})
+export class ReqMappingComponent
+  extends ListFiltersComponent
+  implements OnInit
+{
+  // mobileView: any;
+  requisitions: Requisition[] = [];
+  filters: Filters = {};
+  totalRecords = 0;
+
+  constructor(
+    media: MediaMatcher,
+    public dialog: MatDialog,
+    private reqService: ReqService
+  ) {
+    super({ userType: 'string' }, media);
+  }
+  private searchSubject = new Subject<string>();
+  displayedColumns = [
+    'requestType',
+    'requisitionId',
+    'process',
+    'clientName',
+    'speciality',
+    'jobType',
+    'location',
+    'shift',
+    'openNumbers',
+    'action',
+  ];
+
+  dataSource = ELEMENT_DATA;
+  queryParams: any;
+
+  ngOnInit(): void {
+    this.getJobRequisitions();
+  }
+
+  getJobRequisitions() {
+    this.reqService.getRequisitions().subscribe({
+      next: (data: Requisition[]) => {
+        this.requisitions = data;
+        this.totalRecords = get(data, 'hits.total.value', 0);
+      },
+      error: (err) => {
+        console.error('Error fetching requisitions', err);
+      },
+    });
+  }
+  onPageChange(event: MatPageEvent) {
+    this.onPagination(event);
+    this.getJobRequisitions();
+  }
+  
+  onSearching(searchString: string) {
+    this.searchSubject.next(searchString);
+  }
+
+  reqMappingEdit(rowData: Requisition) {
+    console.log('amhsdbhasbdhasbdfb',rowData);
+    this.dialog.open(ReqMappingEditDialogComponent, {
+      maxWidth: this.mobileView ? '500px' : '100%',
+      width: this.mobileView ? '100%' : '50%',
+      height: 'auto',
+      ...(this.mobileView && {
+        position: { bottom: '5px' },
+      }),
+      closeOnNavigation: true,
+      disableClose: false,
+      data: rowData,
+    });
+  }
+
+  reqMappingUpload() {
+    this.dialog.open(ReqUploadDialogComponent, {
+      maxWidth: this.mobileView ? '700px' : '100%',
+      width: this.mobileView ? '100%' : '40%',
+      height: 'auto',
+      ...(this.mobileView && {
+        position: { bottom: '5px' },
+      }),
+      closeOnNavigation: true,
+      disableClose: false,
+    });
   }
 }
