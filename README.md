@@ -1,412 +1,221 @@
 https://teams.microsoft.com/l/meetup-join/19%3ameeting_ODliN2VjZjktZjM2MS00OGQ4LWFhMzUtZjAwNTJkMTRkY2Y4%40thread.v2/0?context=%7b%22Tid%22%3a%22f6fb95f2-bd20-41a4-b19a-c7fcf96d09a7%22%2c%22Oid%22%3a%2238c62280-1dc6-4ce5-b5b4-8a068650cb44%22%7d
 
-req-mapping-edit-dialog.ts
+remarks-edit-dialog.ts
 
-import { Component, Inject } from '@angular/core';
-import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
-import { ReqService } from '@/src/app/shared/services/req.service';
-import { UserProfile } from '@/src/app/interfaces/app-interface';
+import { Component, OnInit } from '@angular/core';
+import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
+import { MediaMatcher } from '@angular/cdk/layout';
 import {
   FormBuilder,
   FormGroup,
   Validators,
   FormControl,
-  AbstractControl,
-  ValidationErrors,
 } from '@angular/forms';
-import { Requisition } from '../req-mapping/req-mapping.component';
-import { Job } from '@/src/app/shared/services/job-posting.service';
-import { ElasticSearchResponse } from '@/src/app/interfaces/app-interface';
-import { ApplicationService } from '@/src/app/shared/services/job-application.service';
-import {
-  catchError,
-  debounceTime,
-  map,
-  Observable,
-  of,
-  startWith,
-  switchMap,
-} from 'rxjs';
-import { AuthService } from '@/src/app/shared/services/auth.service';
-
-
-@Component({
-  selector: 'app-req-mapping-edit-dialog',
-  templateUrl: './req-mapping-edit-dialog.component.html',
-  styleUrls: ['./req-mapping-edit-dialog.component.scss'],
-})
-export class ReqMappingEditDialogComponent {
-  reqForm: FormGroup;
-  jobs: Job[] = [];
-  public managerComplete$: any;
-  public spocComplete$: any;
-  public managerControl = new FormControl<any>({ value: '', disabled: false }, [
-    Validators.required,
-    this.validateHrIdCtrl,
-  ]);
-  public spocControl = new FormControl<any>({ value: '', disabled: false }, [
-    Validators.required,
-    this.validateHrIdCtrl,
-  ]);
-  public jobControl = new FormControl<any>({ value: '' }, Validators.required);
-
-  form: FormGroup = new FormGroup({
-    reqForm: new FormGroup({
-      jobId: this.jobControl,
-      requisitionId: new FormControl(''),
-      spoc: this.spocControl,
-      closureDate: new FormControl(''),
-      onboardingDate: new FormControl(''),
-      manager: this.managerControl,
-    }),
-  });
-
-  formFields = [
-    {
-      name: 'requisitionId',
-      label: 'Requisition ID',
-      placeholder: 'Enter requisition ID',
-      type: 'text',
-    },
-    {
-      name: 'closureDate',
-      label: 'Closure Date',
-      placeholder: 'Enter closure date',
-      type: 'date',
-    },
-    {
-      name: 'onboardingDate',
-      label: 'Onboarding Date',
-      placeholder: 'Enter onboarding date',
-      type: 'date',
-    },
-  ];
-
-  originalOpenNumbers: number | null = null;
-  openNumbersChanged = false;
-
-  constructor(
-    private dialogRef: MatDialogRef<ReqMappingEditDialogComponent>,
-    @Inject(MAT_DIALOG_DATA) public rowData: any,
-    private reqService: ReqService,
-    private fb: FormBuilder,
-    private applicationService: ApplicationService,
-    private authService: AuthService
-  ) {
-    const closureDateObject = new Date(rowData?.closureDate);
-    const formattedClosureDate = closureDateObject.toISOString().split('T')[0];
-
-    const formattedOnboardingDate = '';
-    if (rowData.onboardingDate) {
-      const onboardingDateObject = new Date(rowData?.onboardingDate);
-      const formattedOnboardingDate = onboardingDateObject
-        ?.toISOString()
-        .split('T')[0];
-    }
-
-    this.reqForm = this.fb.group({
-      jobId: rowData.job.id || this.jobControl,
-      requisitionId: [rowData?.requisitionId || '', Validators.required],
-      spoc: this.spocControl,
-      closureDate: [formattedClosureDate || '', Validators.required],
-      onboardingDate: [formattedOnboardingDate || '', Validators.required],
-      manager: this.managerControl,
-      published: [true, Validators.required],
-    });
-    console.log('DIALOG DATA', rowData);
-
-    if (rowData.openNumbers) {
-       this.originalOpenNumbers = rowData.openNumbers;
-      this.reqForm.addControl(
-        'openNumbers',
-        new FormControl(rowData.openNumbers, Validators.required)
-      );
-      this.reqForm.addControl('openNumbersProof', new FormControl(null));
-
-       this.reqForm.get('openNumbers')?.valueChanges.subscribe((newValue) => {
-         this.openNumbersChanged = newValue !== this.originalOpenNumbers;
-       });
-    }
-  }
-
-  validateHrIdCtrl(ctrl: AbstractControl): ValidationErrors | null {
-    const val = ctrl.value;
-    if (!val || val === '' || !val?.id) {
-      return {
-        error: true,
-      };
-    }
-    return null;
-  }
-
-  ngOnInit(): void {
-    console.log('MY DIALOG DATA INIT', this.rowData);
-    this.getJobs();
-
-    this.managerComplete$ = this.managerControl.valueChanges.pipe(
-      startWith(''),
-      debounceTime(300),
-      switchMap((value) => {
-        if (value !== '') {
-          if (value?.fullName) {
-            return of(null);
-          }
-          return this.lookup(value);
-        } else {
-          return this.lookup('');
-        }
-      })
-    );
-
-    this.spocComplete$ = this.spocControl.valueChanges.pipe(
-      startWith(''),
-      debounceTime(300),
-      switchMap((value) => {
-        if (value !== '') {
-          if (value?.fullName) {
-            return of(null);
-          }
-          return this.lookup(value);
-        } else {
-          return this.lookup('');
-        }
-      })
-    );
-  }
-
-  lookup(value: string): Observable<any> {
-    return this.authService.hrSearch(value?.toLowerCase()).pipe(
-      map((results) => results),
-      catchError((_) => {
-        return of(null);
-      })
-    );
-  }
-
-  displayFullNameFn(option: UserProfile | null) {
-    console.log('Option', option);
-    return option ? option?.fullName ?? option?.email?.split('@')[0] : '';
-  }
-
-  transformList(response: ElasticSearchResponse<any>) {
-    return response.hits.hits.map((job) => {
-      return job._source;
-    });
-  }
-
-  getJobs() {
-    this.applicationService
-      .getAllJobs({
-        orderBy: 'desc',
-        limit: 500,
-        offset: 0,
-      })
-      .then((res) => {
-        this.jobs = this.transformList(res);
-        console.log('MY JOBS', this.jobs);
-      });
-  }
-
-  closeModal() {
-    this.dialogRef.close();
-  }
-
-  onSubmit() {
-    if (this.reqForm.valid) {
-      const formValues = this.reqForm.value;
-      console.log('Manager', formValues);
-      formValues.manager = formValues.manager.id;
-      formValues.spoc = formValues.spoc.id;
-      console.log(formValues);
-      if (formValues.openNumbers) {
-        console.log('OpenNumber', formValues.openNumbers);
-        const proofFile = this.reqForm.get('openNumbersProof')?.value;
-        console.log("Proof file",proofFile)
-         const requestData = {
-           jobRequisition: formValues,
-           file: proofFile,
-        };
-        
-         this.reqService.updatePublishedRequisitions(requestData).subscribe(
-           (response) => {
-             console.log(
-               'Published requisition updated successfully:',
-               response
-             );
-             this.dialogRef.close(true);
-           },
-           (error) => {
-             console.error('Error updating published requisition:', error);
-           }
-        );
-        
-      } else {
-        this.reqService.updateJobRequisition(formValues).subscribe(
-          (response) => {
-            console.log('Job requisition updated successfully:', response);
-            this.dialogRef.close(true);
-          },
-          (error) => {
-            console.error('Error updating job requisition:', error);
-          }
-        );
-      }
-    }
-  }
-}
-
-req-mapping.component.ts
-import { Component, OnInit } from '@angular/core';
-import { MatIconModule } from '@angular/material/icon';
-import { MatTableModule } from '@angular/material/table';
-import { SharedModule } from '../../../shared/shared.module';
-import { MatDialog } from '@angular/material/dialog';
-import { ReqMappingEditDialogComponent } from '@/src//app/hr/components/req-mapping-edit-dialog/req-mapping-edit-dialog.component';
-import { ReqUploadDialogComponent } from '../req-upload-dialog/req-upload-dialog.component';
 import { ReqService } from '@/src/app/shared/services/req.service';
-import { MatCardModule } from '@angular/material/card';
-import { MediaMatcher } from '@angular/cdk/layout';
-import { Subject } from 'rxjs';
-import { get } from 'lodash-es';
-import { Filters, MatPageEvent } from '@/src/app/interfaces/app-interface';
-import { ListFiltersComponent } from '@/src/app/shared/components/list-filters/list-filters.component';
+import { ApplicationService } from '@/src/app/shared/services/job-application.service';
+import { AuthService } from '@/src/app/shared/services/auth.service';
 
 export interface PeriodicElement {
   sjoined: string;
   syto: string;
   sspoc: string;
-  opennumber: string;
-  shift: string;
-  wfm: string;
-  openno: string;
-  action: string;
-}
-
-export interface Requisition {
-  id: string;
-  createdDate: string;
-  updatedDate: string;
-  active: boolean;
-  requestType: string;
-  requisitionId: string;
-  clientName: string;
-  openNumbers: number;
-  intentDate: string;
-  closureDate: string | null;
-  process: string;
-  location: string;
-  speciality: string;
-  jobType: string;
-  shift: string;
-  requisitionStatus: string;
-  spoc: string | null;
-  split: string;
-  role: string;
-  onboardingDate: string | null;
-  published: boolean;
 }
 
 const ELEMENT_DATA: PeriodicElement[] = [
   {
-    sjoined: '20',
-    syto: '20',
-    sspoc: '20',
-    opennumber: '20',
-    shift: '20',
-    wfm: 'eee',
-    openno: 'eeee',
-    action: '',
+    sjoined: 'Dinesh',
+    syto: 'Your attention to detail and commitment to excellence are clearly',
+    sspoc: '20/2/24',
   },
 ];
 @Component({
-  selector: 'app-req-mapping',
-  templateUrl: './req-mapping.component.html',
-  styleUrls: ['./req-mapping.component.scss'],
-  standalone: true,
-  imports: [MatTableModule, MatIconModule, SharedModule, MatCardModule],
+  selector: 'app-remarks-edit-dialog',
+  templateUrl: './remarks-edit-dialog.component.html',
+  styleUrls: ['./remarks-edit-dialog.component.scss'],
 })
-export class ReqMappingComponent
-  extends ListFiltersComponent
-  implements OnInit
-{
-  // mobileView: any;
-  requisitions: Requisition[] = [];
-  filters: Filters = {};
-  totalRecords = 0;
-
+export class RemarksEditDialogComponent implements OnInit {
+  remarkForm: FormGroup;
+  form: FormGroup = new FormGroup({
+    remarkForm: new FormGroup({
+      remarks: new FormControl(''),
+    }),
+  });
   constructor(
-    media: MediaMatcher,
-    public dialog: MatDialog,
-    private reqService: ReqService
+    private dialogRef: MatDialogRef<RemarksEditDialogComponent>,
+    private reqService: ReqService,
+    private fb: FormBuilder,
+    private applicationService: ApplicationService,
+    private authService: AuthService
   ) {
-    super({ userType: 'string' }, media);
+    this.remarkForm = this.fb.group({
+      remarks: ['', Validators.required],
+    });
   }
-  private searchSubject = new Subject<string>();
-  displayedColumns = [
-    'requestType',
-    'requisitionId',
-    'process',
-    'clientName',
-    'speciality',
-    'jobType',
-    'location',
-    'shift',
-    'openNumbers',
-    'action',
-  ];
 
+  displayedColumns = ['sjoined', 'syto', 'sspoc'];
   dataSource = ELEMENT_DATA;
   queryParams: any;
 
+  closeDialog() {
+    this.dialogRef.close();
+  }
   ngOnInit(): void {
-    this.getJobRequisitions();
+    // console.log('MY DIALOG DATA INIT', this.rowData);
+    this.onSubmit();
   }
 
-  getJobRequisitions() {
-    this.reqService.getRequisitions().subscribe({
-      next: (data: Requisition[]) => {
-        this.requisitions = data;
-        this.totalRecords = get(data, 'hits.total.value', 0);
-      },
-      error: (err) => {
-        console.error('Error fetching requisitions', err);
-      },
-    });
-  }
-  onPageChange(event: MatPageEvent) {
-    this.onPagination(event);
-    this.getJobRequisitions();
-  }
-  
-  onSearching(searchString: string) {
-    this.searchSubject.next(searchString);
-  }
-
-  reqMappingEdit(rowData: Requisition) {
-    console.log('amhsdbhasbdhasbdfb',rowData);
-    this.dialog.open(ReqMappingEditDialogComponent, {
-      maxWidth: this.mobileView ? '500px' : '100%',
-      width: this.mobileView ? '100%' : '50%',
-      height: 'auto',
-      ...(this.mobileView && {
-        position: { bottom: '5px' },
-      }),
-      closeOnNavigation: true,
-      disableClose: false,
-      data: rowData,
-    });
-  }
-
-  reqMappingUpload() {
-    this.dialog.open(ReqUploadDialogComponent, {
-      maxWidth: this.mobileView ? '700px' : '100%',
-      width: this.mobileView ? '100%' : '40%',
-      height: 'auto',
-      ...(this.mobileView && {
-        position: { bottom: '5px' },
-      }),
-      closeOnNavigation: true,
-      disableClose: false,
-    });
+  onSubmit() {
+    if (this.remarkForm.valid) {
+      const formData = this.remarkForm.value; // Get form data
+      formData.remarks = formData.remarks.id;
+      console.log('Submitting:', formData); // Log for debugging
+      const requestData = {
+        jobRequisition: formData,
+      };
+      // Call PUT API here
+      this.reqService.updateRemarkRequisitions(requestData).subscribe({
+        next: (response) => {
+          console.log('API Response:', response);
+          // Handle successful response
+        },
+        error: (error) => {
+          console.error('Error:', error);
+          // Handle error response
+        },
+      });
+    } else {
+      console.log('Form is invalid'); // Log if form is invalid
+    }
   }
 }
+
+
+remarks-edit-dialog.html
+
+<div class="remarks-modal">
+  <div class="remarks-header">
+    <h5 class="heading-text">Remarks</h5>
+    <div>
+      <app-icon icon="close" (click)="closeDialog()"></app-icon>
+    </div>
+  </div>
+  <div class="remarks-body">
+    <ng-container>
+      <div class="followup-interview">
+        <form [formGroup]="remarkForm" (ngSubmit)="onSubmit()">
+          <div class="row">
+            <div class="col-sm-9">
+              <div class="form-group ags-form-group">
+                <!-- <input
+                  [formControl]="remarks"
+                  placeholder="Enter remarks"
+                  class="comment form-control"
+                /> -->
+                <mat-form-field>
+                  <input
+                    matInput
+                    [formControlName]="remarks"
+                    [placeholder]="placeholder"
+                    [type]="text"
+                    required
+                  />
+                </mat-form-field>
+              </div>
+            </div>
+            <div class="col-sm-3">
+              <button
+                (click)="onSubmit()"
+                title="Add remarks"
+                class="ags-primary-btn ags-hxl56 ags-padding1624 btn-font16"
+              >
+                Add
+              </button>
+            </div>
+          </div>
+        </form>
+        <div class="folowup-table table-responsive mt-3">
+          <div class="table-responsive">
+            <table mat-table [dataSource]="dataSource">
+              <ng-container matColumnDef="sjoined">
+                <th mat-header-cell *matHeaderCellDef>Name</th>
+                <td mat-cell *matCellDef="let element">
+                  {{ element.sjoined }}
+                </td>
+              </ng-container>
+              <ng-container matColumnDef="syto">
+                <th mat-header-cell *matHeaderCellDef>Remarks</th>
+                <td mat-cell *matCellDef="let element">
+                  {{ element.syto }}
+                  <button class="remarks-button">
+                    <app-icon icon="small_file"></app-icon>
+                  </button>
+                </td>
+              </ng-container>
+              <ng-container matColumnDef="sspoc">
+                <th mat-header-cell *matHeaderCellDef>Created date</th>
+                <td mat-cell *matCellDef="let element">{{ element.sspoc }}</td>
+              </ng-container>
+
+              <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+              <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+            </table>
+          </div>
+        </div>
+        <!-- <div *ngIf="mobileView" class="folowup-table-mobile mt-3">
+          <div>
+            <div class="follow-card-mobile" *ngFor="let followup of followups">
+              <div class="row">
+                <div class="col-6">
+                  <h5 class="interview-title">Created date</h5>
+                  <p class="follow-content">
+                    {{ followup.createdDate | date : 'dd MMM YYYY, h:mma' }}
+                  </p>
+                </div>
+                <div class="col-6">
+                  <h5 class="interview-title">Hr name</h5>
+                  <p class="follow-content">{{ followup.hrName }}</p>
+                </div>
+                <div class="col-12">
+                  <h5 class="interview-title">Remark</h5>
+                  <p class="follow-content" style="word-wrap: break-word">
+                    {{ followup.remark }}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div> -->
+      </div>
+    </ng-container>
+  </div>
+  <div class="remarks-footer">
+    <div class="row justify-content-end">
+      <div class="col-lg-3 col-6">
+        <button
+          title="Close model"
+          (click)="closeDialog()"
+          class="ags-primary-btn ags-hxl56 ags-padding1624 btn-font16"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+src/app/hr/components/remarks-edit-dialog/remarks-edit-dialog.component.html:23:40 - error TS2339: Property 'remarks' does not exist on type 'RemarksEditDialogComponent'.
+
+23                     [formControlName]="remarks"
+                                          ~~~~~~~
+
+
+src/app/hr/components/remarks-edit-dialog/remarks-edit-dialog.component.html:24:36 - error TS2339: Property 'placeholder' does not exist on type 'RemarksEditDialogComponent'.
+
+24                     [placeholder]="placeholder"
+                                      ~~~~~~~~~~~
+
+  src/app/hr/components/remarks-edit-dialog/remarks-edit-dialog.component.ts:29:16
+    29   templateUrl: './remarks-edit-dialog.component.html',
+                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    Error occurs in the template of component RemarksEditDialogComponent.
