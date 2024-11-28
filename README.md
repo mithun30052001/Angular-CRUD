@@ -470,3 +470,60 @@ req-mapping-edit.component.html
     </div>
   </form>
 </div>
+
+
+req.service.ts
+
+import { environment } from '@/environments/environment';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { Injectable } from '@angular/core';
+import { Observable } from 'rxjs';
+import { Requisition } from '@/app/hr/components/req-mapping/req-mapping.component';
+
+@Injectable({
+  providedIn: 'root',
+})
+export class ReqService {
+  constructor(private http: HttpClient) {}
+
+  uploadReqdetails(file: File): Observable<any> {
+    const formData = new FormData();
+    formData.append('file', file, file.name);
+
+    const url = `${environment.API_URL}job-services/requisition/upload`;
+
+    return this.http.post<any>(url, formData);
+  }
+
+  getRequisitions(): Observable<Requisition[]> {
+    const url = `${environment.API_URL}job-services/requisition/get`;
+    return this.http.get<Requisition[]>(url);
+  }
+
+  updateJobRequisition(data: {
+    jobId: string;
+    requisitionId: string;
+    spoc: string;
+    closureDate: string;
+    onboardingDate: string;
+    manager: string;
+    published: boolean;
+  }): Observable<any> {
+    const url = `${environment.API_URL}job-services/requisition/job/create`;
+    return this.http.post<any>(url, data);
+  }
+
+  getPublishedRequisitions(data: {
+    startDate?: string;
+    endDate?: string;
+    page?: number;
+    size: number;
+    pageable: boolean;
+  }): Observable<any> {
+    const url = `${environment.API_URL}job-services/requisition/job/filter`;
+    return this.http.post<any>(url, data);
+  }
+}
+
+Put to ${environment.API_URL}job-services/requisition/job/update
+
