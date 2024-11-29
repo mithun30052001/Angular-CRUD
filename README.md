@@ -1,163 +1,260 @@
 https://teams.microsoft.com/l/meetup-join/19%3ameeting_ODliN2VjZjktZjM2MS00OGQ4LWFhMzUtZjAwNTJkMTRkY2Y4%40thread.v2/0?context=%7b%22Tid%22%3a%22f6fb95f2-bd20-41a4-b19a-c7fcf96d09a7%22%2c%22Oid%22%3a%2238c62280-1dc6-4ce5-b5b4-8a068650cb44%22%7d
 
-req-filter.component.ts
+req-mapping-edit-dialog.component.ts
 
-import { Component, Inject, isDevMode } from '@angular/core';
-import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
-import { SharedService } from '@/src/app/subject-module/shared.service';
-import { Filters } from '@/src/app/interfaces/app-interface';
+import { Component, Inject } from '@angular/core';
+import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
+import { ReqService } from '@/src/app/shared/services/req.service';
+import { UserProfile } from '@/src/app/interfaces/app-interface';
+import {
+  FormBuilder,
+  FormGroup,
+  Validators,
+  FormControl,
+  AbstractControl,
+  ValidationErrors,
+} from '@angular/forms';
+import { Requisition } from '../req-mapping/req-mapping.component';
+import { Job } from '@/src/app/shared/services/job-posting.service';
+import { ElasticSearchResponse } from '@/src/app/interfaces/app-interface';
+import { ApplicationService } from '@/src/app/shared/services/job-application.service';
+import {
+  catchError,
+  debounceTime,
+  map,
+  Observable,
+  of,
+  startWith,
+  switchMap,
+} from 'rxjs';
+import { AuthService } from '@/src/app/shared/services/auth.service';
 import { Router } from '@angular/router';
 
-@Component({
-  selector: 'app-req-filter-modal',
-  templateUrl: './req-filter-modal.component.html',
-  styleUrls: ['./req-filter-modal.component.scss'],
-})
-export class ReqFilterModalComponent {
-  get REQUEST_TYPE_OPTIONS() {
-    return REQUEST_TYPE_OPTIONS;
-  }
-  get PROCESS_OPTIONS() {
-    return PROCESS_OPTIONS;
-  }
-  get SPLIT_OPTIONS() {
-    return SPLIT_OPTIONS;
-  }
-  get ROLE_OPTIONS() {
-    return ROLE_OPTIONS;
-  }
-  get SPECIALITY_OPTIONS() {
-    return SPECIALITY_OPTIONS;
-  }
-  get JOB_TYPE_OPTIONS() {
-    return JOB_TYPE_OPTIONS;
-  }
-  get LOCATION_OPTIONS() {
-    return LOCATION_OPTIONS;
-  }
-  get SHIFT_OPTIONS() {
-    return SHIFT_OPTIONS;
-  }
 
-  selectedFilters: any = {};
+@Component({
+  selector: 'app-req-mapping-edit-dialog',
+  templateUrl: './req-mapping-edit-dialog.component.html',
+  styleUrls: ['./req-mapping-edit-dialog.component.scss'],
+})
+export class ReqMappingEditDialogComponent {
+  reqForm: FormGroup;
+  jobs: Job[] = [];
+  public managerComplete$: any;
+  public spocComplete$: any;
+  public managerControl = new FormControl<any>({ value: '', disabled: false }, [
+    Validators.required,
+    this.validateHrIdCtrl,
+  ]);
+  public spocControl = new FormControl<any>({ value: '', disabled: false }, [
+    Validators.required,
+    this.validateHrIdCtrl,
+  ]);
+  public jobControl = new FormControl<any>({ value: '' }, Validators.required);
+
+  form: FormGroup = new FormGroup({
+    reqForm: new FormGroup({
+      jobId: this.jobControl,
+      requisitionId: new FormControl(''),
+      spoc: this.spocControl,
+      closureDate: new FormControl(''),
+      onboardingDate: new FormControl(''),
+      manager: this.managerControl,
+    }),
+  });
+
+  formFields = [
+    {
+      name: 'closureDate',
+      label: 'Closure Date',
+      placeholder: 'Enter closure date',
+      type: 'date',
+    },
+    {
+      name: 'onboardingDate',
+      label: 'Onboarding Date',
+      placeholder: 'Enter onboarding date',
+      type: 'date',
+    },
+  ];
+
+
+  originalOpenNumbers: number | null = null;
+  openNumbersChanged = false;
+  isHiringUpdate: boolean;
+  hrSpocVal: any;
 
   constructor(
-    private dialogRef: MatDialogRef<ReqFilterModalComponent>,
-    private sharedService: SharedService,
-    private router: Router,
-    @Inject(MAT_DIALOG_DATA)
-    public data: { type: 'jobs' | 'referrals' | 'applications'; filters: any }
+    private dialogRef: MatDialogRef<ReqMappingEditDialogComponent>,
+    @Inject(MAT_DIALOG_DATA) public rowData: any,
+    private reqService: ReqService,
+    private fb: FormBuilder,
+    public router: Router,
+    private applicationService: ApplicationService,
+    private authService: AuthService
   ) {
-    this.selectedFilters = data.filters || {};
+    const closureDateObject = new Date(rowData?.closureDate);
+    const formattedClosureDate = closureDateObject.toISOString().split('T')[0];
+    this.isHiringUpdate = this.router?.url?.includes('h/hiring-update');
+      const onboardingDateObject = new Date(rowData?.onboardingDate);
+      const formattedOnboardingDate = onboardingDateObject
+        ?.toISOString()
+        .split('T')[0];
+     
+    this.reqForm = this.fb.group({
+      jobId: rowData?.job?.id ?? this.jobControl,
+      requisitionId: [rowData?.requisitionId ?? '', Validators.required],
+      spoc: rowData?.hrSpoc ?? this.spocControl,
+      closureDate: [formattedClosureDate ?? '', Validators.required],
+      onboardingDate: [formattedOnboardingDate ?? '', Validators.required],
+      manager: this.managerControl,
+      published: [true, Validators.required],
+    });
+    this.hrSpocVal = rowData?.hrSpoc;
+    console.log('DIALOG DATA', rowData);
+    console.log("REQFORM", rowData?.hrSpoc);
+    if (this.isHiringUpdate === true) {
+      this.originalOpenNumbers = rowData.openNumbers;
+      this.reqForm.addControl(
+        'openNumbers',
+        new FormControl(rowData.openNumbers, Validators.required)
+      );
+      this.reqForm.addControl('openNumbersProof', new FormControl(null));
+
+      this.reqForm.get('openNumbers')?.valueChanges.subscribe((newValue) => {
+        this.openNumbersChanged = newValue !== this.originalOpenNumbers;
+      });
+    } else {
+      this.formFields.unshift({
+        name: 'requisitionId',
+        label: 'Requisition ID',
+        placeholder: 'Enter requisition ID',
+        type: 'text',
+      });
+    }
+  }
+
+  validateHrIdCtrl(ctrl: AbstractControl): ValidationErrors | null {
+    const val = ctrl.value;
+    if (!val || val === '' || !val?.id) {
+      return {
+        error: true,
+      };
+    }
+    return null;
+  }
+
+  ngOnInit(): void {
+    console.log('MY DIALOG DATA INIT', this.rowData);
+    this.isHiringUpdate = this.router?.url?.includes('h/hiring-update');
+    this.getJobs();
+
+    this.managerComplete$ = this.managerControl.valueChanges.pipe(
+      startWith(''),
+      debounceTime(300),
+      switchMap((value) => {
+        if (value !== '') {
+          if (value?.fullName) {
+            return of(null);
+          }
+          return this.lookup(value);
+        } else {
+          return this.lookup('');
+        }
+      })
+    );
+
+    this.spocComplete$ = this.spocControl.valueChanges.pipe(
+      startWith(''),
+      debounceTime(300),
+      switchMap((value) => {
+        if (value !== '') {
+          if (value?.fullName) {
+            return of(null);
+          }
+          return this.lookup(value);
+        } else {
+          return this.lookup('');
+        }
+      })
+    );
+  }
+
+  lookup(value: string): Observable<any> {
+    return this.authService.hrSearch(value?.toLowerCase()).pipe(
+      map((results) => results),
+      catchError((_) => {
+        return of(null);
+      })
+    );
+  }
+
+  displayFullNameFn(option: UserProfile | null) {
+    console.log('Option', option);
+    return option ? option?.fullName ?? option?.email?.split('@')[0] : '';
+  }
+
+  transformList(response: ElasticSearchResponse<any>) {
+    return response.hits.hits.map((job) => {
+      return job._source;
+    });
+  }
+
+  getJobs() {
+    this.applicationService
+      .getAllJobs({
+        orderBy: 'desc',
+        limit: 500,
+        offset: 0,
+      })
+      .then((res) => {
+        this.jobs = this.transformList(res);
+        console.log('MY JOBS', this.jobs);
+      });
   }
 
   closeModal() {
     this.dialogRef.close();
   }
 
-  clearFilter() {
-    this.selectedFilters = {};
-    this.sharedService.setFilters({});
-    this.dialogRef.close();
-  }
+  onSubmit() {
+    if (this.reqForm.valid) {
+      const formValues = this.reqForm.value;
+      console.log('Manager', formValues.manager);
+      formValues.manager = formValues.manager.id;
+      formValues.spoc = formValues.spoc.id;
+      console.log("Formvalues",formValues);
+      if (this.isHiringUpdate === true) {
+        console.log('OpenNumber', formValues.openNumbers);
+        const proofFile = this.reqForm.get('openNumbersProof')?.value;
+        console.log('Proof file', proofFile);
+        const requestData = {
+          jobRequisition: formValues,
+          file: proofFile,
+        };
 
-  applyFilter() {
-    // Encode filters as Base64 and add to query params
-    const filterString = JSON.stringify(this.selectedFilters);
-    const base64Filters = btoa(filterString);
-
-    this.router.navigate([], {
-      queryParams: { filters: base64Filters },
-      queryParamsHandling: 'merge',
-    });
-
-    this.dialogRef.close(this.selectedFilters);
-    this.sharedService.setFilters(this.selectedFilters);
-  }
-
-  onFilterSelect(value: string, field: string) {
-    if (!this.selectedFilters[field]) {
-      this.selectedFilters[field] = [];
-    }
-
-    if (this.selectedFilters[field].includes(value)) {
-      this.selectedFilters[field] = this.selectedFilters[field].filter(
-        (item: string) => item !== value
-      );
-    } else {
-      this.selectedFilters[field].push(value);
-    }
-
-    if (isDevMode()) {
-      console.log('Selected filters:', this.selectedFilters);
-    }
-  }
-}
-
-
-req-filter.component.html
-
-<!-- Example for Request Type -->
-<div class="section row" *ngIf="data.type === 'jobs' || 'applications'">
-  <div class="col-sm-3">
-    <div class="d-flex align-items-center justify-content-between">
-      <div class="filter-job-location">Request Type</div>
-      <button
-        *ngIf="selectedFilters.request_type?.length"
-        title="clear filters"
-        class="close-btn"
-        aria-label="clear filters"
-        (click)="onClearFilter('request_type')"
-      >
-        <app-icon icon="filter_off"></app-icon>
-      </button>
-    </div>
-  </div>
-  <div class="col-sm-9">
-    <div class="right-panel">
-      <div class="row">
-        <div class="col-sm-3" *ngFor="let request_type of REQUEST_TYPE_OPTIONS">
-          <div class="right-panel-content">
-            <div class="right-panel-checkbox">
-              <mat-checkbox
-                class="mt-0 mb-1"
-                [checked]="selectedFilters.request_type?.includes(request_type.value)"
-                (change)="onFilterSelect(request_type.value, 'request_type')"
-              ></mat-checkbox>
-            </div>
-            <div class="right-panel-location">
-              {{ request_type.display }}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-
-component.ts
-
-import { Component, OnInit } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
-
-@Component({
-  selector: 'app-another-component',
-  templateUrl: './another-component.component.html',
-  styleUrls: ['./another-component.component.scss'],
-})
-export class AnotherComponent implements OnInit {
-  filters: any;
-
-  constructor(private route: ActivatedRoute) {}
-
-  ngOnInit() {
-    this.route.queryParams.subscribe((params) => {
-      if (params['filters']) {
-        const decodedFilters = atob(params['filters']);
-        this.filters = JSON.parse(decodedFilters);
-        console.log('Decoded filters:', this.filters);
+        this.reqService.updatePublishedRequisitions(requestData).subscribe(
+          (response) => {
+            console.log(
+              'Published requisition updated successfully:',
+              response
+            );
+            this.dialogRef.close(true);
+          },
+          (error) => {
+            console.error('Error updating published requisition:', error);
+          }
+        );
+      } else {
+        this.reqService.updateJobRequisition(formValues).subscribe(
+          (response) => {
+            console.log('Job requisition updated successfully:', response);
+            this.dialogRef.close(true);
+          },
+          (error) => {
+            console.error('Error updating job requisition:', error);
+          }
+        );
       }
-    });
+    }
   }
 }
