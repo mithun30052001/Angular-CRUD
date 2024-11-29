@@ -1,23 +1,12 @@
 https://teams.microsoft.com/l/meetup-join/19%3ameeting_ODliN2VjZjktZjM2MS00OGQ4LWFhMzUtZjAwNTJkMTRkY2Y4%40thread.v2/0?context=%7b%22Tid%22%3a%22f6fb95f2-bd20-41a4-b19a-c7fcf96d09a7%22%2c%22Oid%22%3a%2238c62280-1dc6-4ce5-b5b4-8a068650cb44%22%7d
 
-req-filter.modal.ts
+req-filter.component.ts
 
-import {
-  REQUEST_TYPE_OPTIONS,
-  PROCESS_OPTIONS,
-  SPLIT_OPTIONS,
-  ROLE_OPTIONS,
-  SPECIALITY_OPTIONS,
-  JOB_TYPE_OPTIONS,
-  LOCATION_OPTIONS,
-  SHIFT_OPTIONS,
-} from '@/src/app/constants/app.constants';
-import { Filters } from '@/src/app/interfaces/app-interface';
-import { SharedService } from '@/src/app/subject-module/shared.service';
 import { Component, Inject, isDevMode } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
-import { MatRadioChange } from '@angular/material/radio';
-import { checkHrOrAdmin } from '../../utils/utils';
+import { SharedService } from '@/src/app/subject-module/shared.service';
+import { Filters } from '@/src/app/interfaces/app-interface';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-req-filter-modal',
@@ -51,413 +40,124 @@ export class ReqFilterModalComponent {
   }
 
   selectedFilters: any = {};
+
   constructor(
     private dialogRef: MatDialogRef<ReqFilterModalComponent>,
-    private subjectService: SharedService,
+    private sharedService: SharedService,
+    private router: Router,
     @Inject(MAT_DIALOG_DATA)
-    public data: {
-      type: 'jobs' | 'referrals' | 'applications';
-      filters: any;
-    }
+    public data: { type: 'jobs' | 'referrals' | 'applications'; filters: any }
   ) {
-    this.selectedFilters = data.filters;
+    this.selectedFilters = data.filters || {};
   }
 
   closeModal() {
     this.dialogRef.close();
   }
 
-  clearFiler() {
-    this.selectedFilters = {
-      request_type: undefined,
-      process: undefined,
-      split: undefined,
-      role: undefined,
-      speciality: undefined,
-      job_type: undefined,
-      location: undefined,
-      shift: undefined,
-    };
-    this.subjectService.setFilters({});
+  clearFilter() {
+    this.selectedFilters = {};
+    this.sharedService.setFilters({});
     this.dialogRef.close();
   }
+
   applyFilter() {
+    // Encode filters as Base64 and add to query params
+    const filterString = JSON.stringify(this.selectedFilters);
+    const base64Filters = btoa(filterString);
+
+    this.router.navigate([], {
+      queryParams: { filters: base64Filters },
+      queryParamsHandling: 'merge',
+    });
+
     this.dialogRef.close(this.selectedFilters);
-    this.subjectService.setFilters(this.selectedFilters);
+    this.sharedService.setFilters(this.selectedFilters);
   }
 
-  onClearFilter(field: any) {
-    this.selectedFilters[field] = undefined;
-    this.subjectService.setFilters(this.selectedFilters);
-  }
+  onFilterSelect(value: string, field: string) {
+    if (!this.selectedFilters[field]) {
+      this.selectedFilters[field] = [];
+    }
 
-  onFilterSelect(event: MatRadioChange, field: any) {
-    this.selectedFilters = {
-      ...this.selectedFilters,
-      [field]: event.value,
-    };
+    if (this.selectedFilters[field].includes(value)) {
+      this.selectedFilters[field] = this.selectedFilters[field].filter(
+        (item: string) => item !== value
+      );
+    } else {
+      this.selectedFilters[field].push(value);
+    }
 
-    if (isDevMode()) console.log('selected filters::> ', this.selectedFilters);
+    if (isDevMode()) {
+      console.log('Selected filters:', this.selectedFilters);
+    }
   }
 }
 
 
-req-filter-modal.html
+req-filter.component.html
 
-<!-- Job Card Filter -->
-
-<div class="filter-view">
-  <div class="heading">
-    <div class="heading-text">Filter</div>
-    <div class="heading-image">
-      <button class="close-btn" (click)="closeModal()">
-        <app-icon class="app-icon" icon="close"></app-icon>
+<!-- Example for Request Type -->
+<div class="section row" *ngIf="data.type === 'jobs' || 'applications'">
+  <div class="col-sm-3">
+    <div class="d-flex align-items-center justify-content-between">
+      <div class="filter-job-location">Request Type</div>
+      <button
+        *ngIf="selectedFilters.request_type?.length"
+        title="clear filters"
+        class="close-btn"
+        aria-label="clear filters"
+        (click)="onClearFilter('request_type')"
+      >
+        <app-icon icon="filter_off"></app-icon>
       </button>
     </div>
   </div>
-  <div class="filter-overflow">
-    <!-- Request Type -->
-    <div class="section row" *ngIf="data.type === 'jobs' || 'applications'">
-      <div class="col-sm-3">
-        <div class="d-flex align-items-center justify-content-between">
-          <div class="filter-job-location">Request Type</div>
-          <button
-            *ngIf="selectedFilters.request_type"
-            title="clear filters"
-            class="close-btn"
-            aria-label="clear filters"
-            (click)="onClearFilter('request_type')"
-          >
-            <app-icon icon="filter_off"></app-icon>
-          </button>
-        </div>
-      </div>
-      <div class="col-sm-9">
-        <div class="right-panel">
-          <mat-radio-group [(ngModel)]="selectedFilters.request_type">
-            <div class="row">
-              <div class="col-sm-3" *ngFor="let request_type of REQUEST_TYPE_OPTIONS">
-                <div class="right-panel-content">
-                  <div class="right-panel-checkbox">
-                    <mat-radio-button
-                      class="mt-0 mb-1"
-                      [value]="request_type.value"
-                      (change)="onFilterSelect($event, 'request_type')"
-                    ></mat-radio-button>
-                  </div>
-                  <div class="right-panel-location">
-                    {{ request_type.display }}
-                  </div>
-                </div>
-              </div>
+  <div class="col-sm-9">
+    <div class="right-panel">
+      <div class="row">
+        <div class="col-sm-3" *ngFor="let request_type of REQUEST_TYPE_OPTIONS">
+          <div class="right-panel-content">
+            <div class="right-panel-checkbox">
+              <mat-checkbox
+                class="mt-0 mb-1"
+                [checked]="selectedFilters.request_type?.includes(request_type.value)"
+                (change)="onFilterSelect(request_type.value, 'request_type')"
+              ></mat-checkbox>
             </div>
-          </mat-radio-group>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Process -->
-    <div class="section row" *ngIf="data.type === 'jobs' || 'applications'">
-      <div class="col-sm-3">
-        <div class="d-flex align-items-center justify-content-between">
-          <div class="filter-job-location">Process</div>
-          <button
-            *ngIf="selectedFilters.process"
-            title="clear filters"
-            class="close-btn"
-            aria-label="clear filters"
-            (click)="onClearFilter('process')"
-          >
-            <app-icon icon="filter_off"></app-icon>
-          </button>
-        </div>
-      </div>
-      <div class="col-sm-9">
-        <div class="right-panel">
-          <mat-radio-group [(ngModel)]="selectedFilters.process">
-            <div class="row">
-              <div class="col-sm-3" *ngFor="let process of PROCESS_OPTIONS">
-                <div class="right-panel-content">
-                  <div class="right-panel-checkbox">
-                    <mat-radio-button
-                      class="mt-0 mb-1"
-                      [value]="process.value"
-                      (change)="onFilterSelect($event, 'request_type')"
-                    ></mat-radio-button>
-                  </div>
-                  <div class="right-panel-location">
-                    {{ process.display }}
-                  </div>
-                </div>
-              </div>
+            <div class="right-panel-location">
+              {{ request_type.display }}
             </div>
-          </mat-radio-group>
+          </div>
         </div>
-      </div>
-    </div>
-
-    <!-- Split -->
-    <div class="section row" *ngIf="data.type === 'jobs' || 'applications'">
-      <div class="col-sm-3">
-        <div class="d-flex align-items-center justify-content-between">
-          <div class="filter-job-location">Split</div>
-          <button
-            *ngIf="selectedFilters.split"
-            title="clear filters"
-            class="close-btn"
-            aria-label="clear filters"
-            (click)="onClearFilter('split')"
-          >
-            <app-icon icon="filter_off"></app-icon>
-          </button>
-        </div>
-      </div>
-      <div class="col-sm-9">
-        <div class="right-panel">
-          <mat-radio-group [(ngModel)]="selectedFilters.split">
-            <div class="row">
-              <div class="col-sm-3" *ngFor="let split of SPLIT_OPTIONS">
-                <div class="right-panel-content">
-                  <div class="right-panel-checkbox">
-                    <mat-radio-button
-                      class="mt-0 mb-1"
-                      [value]="split.value"
-                      (change)="onFilterSelect($event, 'request_type')"
-                    ></mat-radio-button>
-                  </div>
-                  <div class="right-panel-location">
-                    {{ split.display }}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </mat-radio-group>
-        </div>
-      </div>
-    </div>
-
-     <!-- Role -->
-    <div class="section row" *ngIf="data.type === 'jobs' || 'applications'">
-      <div class="col-sm-3">
-        <div class="d-flex align-items-center justify-content-between">
-          <div class="filter-job-location">Role</div>
-          <button
-            *ngIf="selectedFilters.role"
-            title="clear filters"
-            class="close-btn"
-            aria-label="clear filters"
-            (click)="onClearFilter('role')"
-          >
-            <app-icon icon="filter_off"></app-icon>
-          </button>
-        </div>
-      </div>
-      <div class="col-sm-9">
-        <div class="right-panel">
-          <mat-radio-group [(ngModel)]="selectedFilters.role">
-            <div class="row">
-              <div class="col-sm-3" *ngFor="let role of ROLE_OPTIONS">
-                <div class="right-panel-content">
-                  <div class="right-panel-checkbox">
-                    <mat-radio-button
-                      class="mt-0 mb-1"
-                      [value]="role.value"
-                      (change)="onFilterSelect($event, 'role')"
-                    ></mat-radio-button>
-                  </div>
-                  <div class="right-panel-location">
-                    {{ role.display }}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </mat-radio-group>
-        </div>
-      </div>
-    </div>
-
-     <!-- Speciality -->
-    <div class="section row" *ngIf="data.type === 'jobs' || 'applications'">
-      <div class="col-sm-3">
-        <div class="d-flex align-items-center justify-content-between">
-          <div class="filter-job-location">Speciality</div>
-          <button
-            *ngIf="selectedFilters.speciality"
-            title="clear filters"
-            class="close-btn"
-            aria-label="clear filters"
-            (click)="onClearFilter('speciality')"
-          >
-            <app-icon icon="filter_off"></app-icon>
-          </button>
-        </div>
-      </div>
-      <div class="col-sm-9">
-        <div class="right-panel">
-          <mat-radio-group [(ngModel)]="selectedFilters.speciality">
-            <div class="row">
-              <div class="col-sm-3" *ngFor="let speciality of SPECIALITY_OPTIONS">
-                <div class="right-panel-content">
-                  <div class="right-panel-checkbox">
-                    <mat-radio-button
-                      class="mt-0 mb-1"
-                      [value]="speciality.value"
-                      (change)="onFilterSelect($event, 'speciality')"
-                    ></mat-radio-button>
-                  </div>
-                  <div class="right-panel-location">
-                    {{ speciality.display }}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </mat-radio-group>
-        </div>
-      </div>
-    </div>
-
-     <!-- Job Type -->
-    <div class="section row" *ngIf="data.type === 'jobs' || 'applications'">
-      <div class="col-sm-3">
-        <div class="d-flex align-items-center justify-content-between">
-          <div class="filter-job-location">Job Type</div>
-          <button
-            *ngIf="selectedFilters.job_type"
-            title="clear filters"
-            class="close-btn"
-            aria-label="clear filters"
-            (click)="onClearFilter('job_type')"
-          >
-            <app-icon icon="filter_off"></app-icon>
-          </button>
-        </div>
-      </div>
-      <div class="col-sm-9">
-        <div class="right-panel">
-          <mat-radio-group [(ngModel)]="selectedFilters.job_type">
-            <div class="row">
-              <div class="col-sm-3" *ngFor="let job_type of JOB_TYPE_OPTIONS">
-                <div class="right-panel-content">
-                  <div class="right-panel-checkbox">
-                    <mat-radio-button
-                      class="mt-0 mb-1"
-                      [value]="job_type.value"
-                      (change)="onFilterSelect($event, 'speciality')"
-                    ></mat-radio-button>
-                  </div>
-                  <div class="right-panel-location">
-                    {{ job_type.display }}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </mat-radio-group>
-        </div>
-      </div>
-    </div>
-
-    <!-- Job Location -->
-    <div class="section row" *ngIf="data.type === 'jobs' || 'applications'">
-      <div class="col-sm-3">
-        <div class="d-flex align-items-center justify-content-between">
-          <div class="filter-job-location">Location</div>
-          <button
-            *ngIf="selectedFilters.location"
-            title="clear filters"
-            class="close-btn"
-            aria-label="clear filters"
-            (click)="onClearFilter('location')"
-          >
-            <app-icon icon="filter_off"></app-icon>
-          </button>
-        </div>
-      </div>
-      <div class="col-sm-9">
-        <div class="right-panel">
-          <mat-radio-group [(ngModel)]="selectedFilters.location">
-            <div class="row">
-              <div class="col-sm-3" *ngFor="let location of LOCATION_OPTIONS">
-                <div class="right-panel-content">
-                  <div class="right-panel-checkbox">
-                    <mat-radio-button
-                      class="mt-0 mb-1"
-                      [value]="location.value"
-                      (change)="onFilterSelect($event, 'location')"
-                    ></mat-radio-button>
-                  </div>
-                  <div class="right-panel-location">
-                    {{ location.display }}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </mat-radio-group>
-        </div>
-      </div>
-    </div>
-
-     <!-- Shift -->
-    <div class="section row" *ngIf="data.type === 'jobs' || 'applications'">
-      <div class="col-sm-3">
-        <div class="d-flex align-items-center justify-content-between">
-          <div class="filter-job-location">Shift</div>
-          <button
-            *ngIf="selectedFilters.shift"
-            title="clear filters"
-            class="close-btn"
-            aria-label="clear filters"
-            (click)="onClearFilter('shift')"
-          >
-            <app-icon icon="filter_off"></app-icon>
-          </button>
-        </div>
-      </div>
-      <div class="col-sm-9">
-        <div class="right-panel">
-          <mat-radio-group [(ngModel)]="selectedFilters.shift">
-            <div class="row">
-              <div class="col-sm-3" *ngFor="let shift of SHIFT_OPTIONS">
-                <div class="right-panel-content">
-                  <div class="right-panel-checkbox">
-                    <mat-radio-button
-                      class="mt-0 mb-1"
-                      [value]="shift.value"
-                      (change)="onFilterSelect($event, 'location')"
-                    ></mat-radio-button>
-                  </div>
-                  <div class="right-panel-location">
-                    {{ shift.display }}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </mat-radio-group>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="footer-button">
-    <div class="card-style">
-      <div>
-        <button
-          title="Clear Filter"
-          class="ags-outline-btn ags-hxl56 btn-font16 ags-padding1624"
-          (click)="clearFiler()"
-        >
-          Clear Filter
-        </button>
-      </div>
-      <div>
-        <button
-          title="Apply Filter"
-          class="ags-primary-btn ags-hxl56 btn-font16 ags-padding1624"
-          (click)="applyFilter()"
-        >
-          Apply Filter
-        </button>
       </div>
     </div>
   </div>
 </div>
 
+
+component.ts
+
+import { Component, OnInit } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
+
+@Component({
+  selector: 'app-another-component',
+  templateUrl: './another-component.component.html',
+  styleUrls: ['./another-component.component.scss'],
+})
+export class AnotherComponent implements OnInit {
+  filters: any;
+
+  constructor(private route: ActivatedRoute) {}
+
+  ngOnInit() {
+    this.route.queryParams.subscribe((params) => {
+      if (params['filters']) {
+        const decodedFilters = atob(params['filters']);
+        this.filters = JSON.parse(decodedFilters);
+        console.log('Decoded filters:', this.filters);
+      }
+    });
+  }
+}
