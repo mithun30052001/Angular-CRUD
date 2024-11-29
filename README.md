@@ -1,8 +1,9 @@
 https://teams.microsoft.com/l/meetup-join/19%3ameeting_ODliN2VjZjktZjM2MS00OGQ4LWFhMzUtZjAwNTJkMTRkY2Y4%40thread.v2/0?context=%7b%22Tid%22%3a%22f6fb95f2-bd20-41a4-b19a-c7fcf96d09a7%22%2c%22Oid%22%3a%2238c62280-1dc6-4ce5-b5b4-8a068650cb44%22%7d
 
-req-mapping-edit-dialog.component.ts
 
-import { Component, Inject } from '@angular/core';
+req-mapping-edit-dialog.ts
+
+import { Component, Inject, OnInit } from '@angular/core';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { ReqService } from '@/src/app/shared/services/req.service';
 import { UserProfile } from '@/src/app/interfaces/app-interface';
@@ -30,13 +31,12 @@ import {
 import { AuthService } from '@/src/app/shared/services/auth.service';
 import { Router } from '@angular/router';
 
-
 @Component({
   selector: 'app-req-mapping-edit-dialog',
   templateUrl: './req-mapping-edit-dialog.component.html',
   styleUrls: ['./req-mapping-edit-dialog.component.scss'],
 })
-export class ReqMappingEditDialogComponent {
+export class ReqMappingEditDialogComponent implements OnInit {
   reqForm: FormGroup;
   jobs: Job[] = [];
   public managerComplete$: any;
@@ -77,7 +77,6 @@ export class ReqMappingEditDialogComponent {
     },
   ];
 
-
   originalOpenNumbers: number | null = null;
   openNumbersChanged = false;
   isHiringUpdate: boolean;
@@ -91,61 +90,12 @@ export class ReqMappingEditDialogComponent {
     public router: Router,
     private applicationService: ApplicationService,
     private authService: AuthService
-  ) {
-    const closureDateObject = new Date(rowData?.closureDate);
-    const formattedClosureDate = closureDateObject.toISOString().split('T')[0];
-    this.isHiringUpdate = this.router?.url?.includes('h/hiring-update');
-      const onboardingDateObject = new Date(rowData?.onboardingDate);
-      const formattedOnboardingDate = onboardingDateObject
-        ?.toISOString()
-        .split('T')[0];
-     
-    this.reqForm = this.fb.group({
-      jobId: rowData?.job?.id ?? this.jobControl,
-      requisitionId: [rowData?.requisitionId ?? '', Validators.required],
-      spoc: rowData?.hrSpoc ?? this.spocControl,
-      closureDate: [formattedClosureDate ?? '', Validators.required],
-      onboardingDate: [formattedOnboardingDate ?? '', Validators.required],
-      manager: this.managerControl,
-      published: [true, Validators.required],
-    });
-    this.hrSpocVal = rowData?.hrSpoc;
-    console.log('DIALOG DATA', rowData);
-    console.log("REQFORM", rowData?.hrSpoc);
-    if (this.isHiringUpdate === true) {
-      this.originalOpenNumbers = rowData.openNumbers;
-      this.reqForm.addControl(
-        'openNumbers',
-        new FormControl(rowData.openNumbers, Validators.required)
-      );
-      this.reqForm.addControl('openNumbersProof', new FormControl(null));
-
-      this.reqForm.get('openNumbers')?.valueChanges.subscribe((newValue) => {
-        this.openNumbersChanged = newValue !== this.originalOpenNumbers;
-      });
-    } else {
-      this.formFields.unshift({
-        name: 'requisitionId',
-        label: 'Requisition ID',
-        placeholder: 'Enter requisition ID',
-        type: 'text',
-      });
-    }
-  }
-
-  validateHrIdCtrl(ctrl: AbstractControl): ValidationErrors | null {
-    const val = ctrl.value;
-    if (!val || val === '' || !val?.id) {
-      return {
-        error: true,
-      };
-    }
-    return null;
-  }
+  ) {}
 
   ngOnInit(): void {
     console.log('MY DIALOG DATA INIT', this.rowData);
     this.isHiringUpdate = this.router?.url?.includes('h/hiring-update');
+    this.initForm();
     this.getJobs();
 
     this.managerComplete$ = this.managerControl.valueChanges.pipe(
@@ -177,6 +127,61 @@ export class ReqMappingEditDialogComponent {
         }
       })
     );
+  }
+
+  initForm(): void {
+    const closureDateObject = new Date(this.rowData?.closureDate);
+    const formattedClosureDate = closureDateObject.toISOString().split('T')[0];
+    const onboardingDateObject = new Date(this.rowData?.onboardingDate);
+    const formattedOnboardingDate = onboardingDateObject
+      ?.toISOString()
+      .split('T')[0];
+
+    this.reqForm = this.fb.group({
+      jobId: this.rowData?.job?.id ?? this.jobControl,
+      requisitionId: [this.rowData?.requisitionId ?? '', Validators.required],
+      spoc: this.spocControl,
+      closureDate: [formattedClosureDate ?? '', Validators.required],
+      onboardingDate: [formattedOnboardingDate ?? '', Validators.required],
+      manager: this.managerControl,
+      published: [true, Validators.required],
+    });
+
+    // Log the value of hrSpoc and patch the value if it is not null or undefined
+    console.log('HR Spoc:', this.rowData?.hrSpoc);
+    if (this.rowData?.hrSpoc != null) {
+      this.reqForm.patchValue({ spoc: this.rowData?.hrSpoc });
+    }
+
+    if (this.isHiringUpdate === true) {
+      this.originalOpenNumbers = this.rowData.openNumbers;
+      this.reqForm.addControl(
+        'openNumbers',
+        new FormControl(this.rowData.openNumbers, Validators.required)
+      );
+      this.reqForm.addControl('openNumbersProof', new FormControl(null));
+
+      this.reqForm.get('openNumbers')?.valueChanges.subscribe((newValue) => {
+        this.openNumbersChanged = newValue !== this.originalOpenNumbers;
+      });
+    } else {
+      this.formFields.unshift({
+        name: 'requisitionId',
+        label: 'Requisition ID',
+        placeholder: 'Enter requisition ID',
+        type: 'text',
+      });
+    }
+  }
+
+  validateHrIdCtrl(ctrl: AbstractControl): ValidationErrors | null {
+    const val = ctrl.value;
+    if (!val || val === '' || !val?.id) {
+      return {
+        error: true,
+      };
+    }
+    return null;
   }
 
   lookup(value: string): Observable<any> {
@@ -222,7 +227,7 @@ export class ReqMappingEditDialogComponent {
       console.log('Manager', formValues.manager);
       formValues.manager = formValues.manager.id;
       formValues.spoc = formValues.spoc.id;
-      console.log("Formvalues",formValues);
+      console.log('Formvalues', formValues);
       if (this.isHiringUpdate === true) {
         console.log('OpenNumber', formValues.openNumbers);
         const proofFile = this.reqForm.get('openNumbersProof')?.value;
