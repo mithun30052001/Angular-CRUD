@@ -1,484 +1,230 @@
 https://teams.microsoft.com/l/meetup-join/19%3ameeting_ODliN2VjZjktZjM2MS00OGQ4LWFhMzUtZjAwNTJkMTRkY2Y4%40thread.v2/0?context=%7b%22Tid%22%3a%22f6fb95f2-bd20-41a4-b19a-c7fcf96d09a7%22%2c%22Oid%22%3a%2238c62280-1dc6-4ce5-b5b4-8a068650cb44%22%7d
 
-req-filter.component.ts
+remarks-edit-dialog.component.ts
 
-import {
-  REQUEST_TYPE_OPTIONS,
-  PROCESS_OPTIONS,
-  SPLIT_OPTIONS,
-  ROLE_OPTIONS,
-  SPECIALITY_OPTIONS,
-  JOB_TYPE_OPTIONS,
-  LOCATION_OPTIONS,
-  SHIFT_OPTIONS,
-} from '@/src/app/constants/app.constants';
-import { Filters } from '@/src/app/interfaces/app-interface';
-import { SharedService } from '@/src/app/subject-module/shared.service';
-import { Component, Inject, isDevMode } from '@angular/core';
+import { Component, OnInit, Inject } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
-import { MatRadioChange } from '@angular/material/radio';
-import { checkHrOrAdmin } from '../../utils/utils';
-import { Router } from '@angular/router';
+import { MediaMatcher } from '@angular/cdk/layout';
+import {
+  FormBuilder,
+  FormGroup,
+  Validators,
+  FormControl,
+} from '@angular/forms';
+import { ReqService } from '@/src/app/shared/services/req.service';
+import { ApplicationService } from '@/src/app/shared/services/job-application.service';
+import { AuthService } from '@/src/app/shared/services/auth.service';
+
+
+const ELEMENT_DATA: any[] = [];
 
 @Component({
-  selector: 'app-req-filter-modal',
-  templateUrl: './req-filter-modal.component.html',
-  styleUrls: ['./req-filter-modal.component.scss'],
+  selector: 'app-remarks-edit-dialog',
+  templateUrl: './remarks-edit-dialog.component.html',
+  styleUrls: ['./remarks-edit-dialog.component.scss'],
 })
-export class ReqFilterModalComponent {
-  get REQUEST_TYPE_OPTIONS() {
-    return REQUEST_TYPE_OPTIONS;
-  }
-  get PROCESS_OPTIONS() {
-    return PROCESS_OPTIONS;
-  }
-  get SPLIT_OPTIONS() {
-    return SPLIT_OPTIONS;
-  }
-  get ROLE_OPTIONS() {
-    return ROLE_OPTIONS;
-  }
-  get SPECIALITY_OPTIONS() {
-    return SPECIALITY_OPTIONS;
-  }
-  get JOB_TYPE_OPTIONS() {
-    return JOB_TYPE_OPTIONS;
-  }
-  get LOCATION_OPTIONS() {
-    return LOCATION_OPTIONS;
-  }
-  get SHIFT_OPTIONS() {
-    return SHIFT_OPTIONS;
-  }
-
-  selectedFilters: any = {};
+export class RemarksEditDialogComponent implements OnInit {
+  remarkForm: FormGroup;
+  data: any;
+  form: FormGroup = new FormGroup({
+    remarkForm: new FormGroup({
+      remarks: new FormControl(''),
+    }),
+  });
   constructor(
-    private dialogRef: MatDialogRef<ReqFilterModalComponent>,
-    private subjectService: SharedService,
-    private router: Router,
-    @Inject(MAT_DIALOG_DATA)
-    public data: {
-      type: 'jobs' | 'referrals' | 'applications';
-      filters: any;
-    }
+    private dialogRef: MatDialogRef<RemarksEditDialogComponent>,
+    @Inject(MAT_DIALOG_DATA) public rowData: any,
+    private reqService: ReqService,
+    private fb: FormBuilder,
+    private applicationService: ApplicationService,
+    private authService: AuthService
   ) {
-    this.selectedFilters = data.filters;
-  }
-
-  closeModal() {
-    this.dialogRef.close();
-  }
-
-  clearFiler() {
-    this.selectedFilters = {
-      request_type: undefined,
-      process: undefined,
-      split: undefined,
-      role: undefined,
-      speciality: undefined,
-      job_type: undefined,
-      location: undefined,
-      shift: undefined,
-    };
-    this.subjectService.setFilters({});
-    this.dialogRef.close();
-  }
-
-  onClearFilter(field: any) {
-    this.selectedFilters[field] = undefined;
-    this.subjectService.setFilters(this.selectedFilters);
-  }
-
-  clearFilter() {
-    this.selectedFilters = {};
-    this.dialogRef.close();
-  }
-
-  applyFilter() {
-    // Encode filters as Base64 and add to query params
-    const filterString = JSON.stringify(this.selectedFilters);
-    const base64Filters = btoa(filterString);
-    console.log("BASE 64", base64Filters);
-
-    this.router.navigate([], {
-      queryParams: { filters: base64Filters },
-      queryParamsHandling: 'merge',
+    console.log('MY ROWDATA INSIDE REMARKS', rowData.requesitionId);
+    this.remarkForm = this.fb.group({
+      remarks: ['', Validators.required],
     });
-    this.dialogRef.close(this.selectedFilters);
+    this.data = rowData;
   }
 
-  onFilterSelect(value: string, field: string) {
-    if (!this.selectedFilters[field]) {
-      this.selectedFilters[field] = [];
-    }
+  displayedColumns = ['sjoined', 'syto', 'sspoc'];
+  dataSource = ELEMENT_DATA;
+  queryParams: any;
 
-    if (this.selectedFilters[field].includes(value)) {
-      this.selectedFilters[field] = this.selectedFilters[field].filter(
-        (item: string) => item !== value
-      );
+  closeDialog() {
+    this.dialogRef.close();
+  }
+  ngOnInit(): void {
+    this.getRequistionRemarks(this.data?.requisitionId);
+    this.onSubmit();
+  }
+
+  getRequistionRemarks(reqId: string) {
+    this.reqService.getJobRequisitionRemarks(reqId).subscribe(
+      (response) => {
+        const data = response;
+        console.log("RECEIVED RESPONSE", data);
+       
+        this.dataSource = data.map((item: any) => ({
+          name: item.hrName,
+          remarks: item.remark,
+          createdDate: item.createdDate,
+        }));
+
+        console.log('Job requisition updated successfully:', response);
+      },
+      (error) => {
+        console.error('Error updating job requisition:', error);
+      }
+    );
+  }
+
+  onSubmit() {
+    if (this.remarkForm.valid) {
+      const formData = this.remarkForm.value.remarks;
+      console.log('Submitting:', this.remarkForm);
+      const requestData = {
+        requisitionId: this.data?.requisitionId,
+        remarksUpdate: true,
+        remarks: formData,
+      };
+      console.log('My requestData', requestData);
+      this.reqService.updateRemarkRequisitions(requestData).subscribe({
+        next: (response) => {
+          console.log('API Response:', response);
+          this.getRequistionRemarks(this.data?.requisitionId);
+        },
+        error: (error) => {
+          console.error('Error:', error);
+        },
+      });
     } else {
-      this.selectedFilters[field].push(value);
-    }
-
-    if (isDevMode()) {
-      console.log('Selected filters:', this.selectedFilters);
+      console.log('Form is invalid');
     }
   }
 }
 
+remarks-edit-dialog.component.html
 
-req-filter.componnent.html
-<!-- Job Card Filter -->
-
-<div class="filter-view">
-  <div class="heading">
-    <div class="heading-text">Filter</div>
-    <div class="heading-image">
-      <button class="close-btn" (click)="closeModal()">
-        <app-icon class="app-icon" icon="close"></app-icon>
-      </button>
+<div class="remarks-modal">
+  <div class="remarks-header">
+    <h5 class="heading-text">Remarks</h5>
+    <div>
+      <app-icon icon="close" (click)="closeDialog()"></app-icon>
     </div>
   </div>
-  <div class="filter-overflow">
-    <!-- Request Type -->
-    <div class="section row" *ngIf="data.type === 'jobs' || 'applications'">
-      <div class="col-sm-2">
-        <div class="d-flex align-items-center justify-content-between">
-          <div class="filter-job-location">Request Type</div>
-          <button
-            *ngIf="selectedFilters.request_type?.length"
-            title="clear filters"
-            class="close-btn"
-            aria-label="clear filters"
-            (click)="onClearFilter('request_type')"
-          >
-            <app-icon icon="filter_off"></app-icon>
-          </button>
-        </div>
-      </div>
-      <div class="col-sm-10">
-        <div class="right-panel">
+  <div class="remarks-body">
+    <ng-container>
+      <div class="followup-interview">
+        <form [formGroup]="remarkForm" (ngSubmit)="onSubmit()">
           <div class="row">
-            <div
-              class="col-sm-3"
-              *ngFor="let request_type of REQUEST_TYPE_OPTIONS"
-            >
-              <div class="right-panel-content">
-                <div class="right-panel-checkbox">
-                  <mat-checkbox
-                    class="mt-0 mb-1"
-                    [checked]="
-                      selectedFilters.request_type?.includes(request_type.value)
-                    "
-                    (change)="
-                      onFilterSelect(request_type.value, 'request_type')
-                    "
-                  ></mat-checkbox>
-                </div>
-                <div class="right-panel-location">
-                  {{ request_type.display }}
-                </div>
+            <div class="col-sm-9">
+              <div class="form-group ags-form-group">
+                <!-- <input
+                  [formControl]="remarks"
+                  placeholder="Enter remarks"
+                  class="comment form-control"
+                /> -->
+                <mat-form-field>
+                  <input
+                    matInput
+                    formControlName="remarks"
+                    placeholder="Add Remarks"
+                    type="text"
+                    class="w-100"
+                    required
+                  />
+                </mat-form-field>
               </div>
             </div>
+            <div class="col-sm-3">
+              <button
+                title="Add remarks"
+                type="submit"
+                class="ags-primary-btn ags-hxl56 ags-padding1624 btn-font16"
+              >
+                Add
+              </button>
+            </div>
           </div>
-        </div>
-      </div>
-    </div>
+        </form>
+        <div class="folowup-table table-responsive mt-3">
+          <div class="table-responsive">
+            <table mat-table [dataSource]="dataSource">
+              <ng-container matColumnDef="sjoined">
+                <th mat-header-cell *matHeaderCellDef>Name</th>
+                <td mat-cell *matCellDef="let element">
+                  {{ element.name }}
+                </td>
+              </ng-container>
+              <ng-container matColumnDef="syto">
+                <th mat-header-cell *matHeaderCellDef>Remarks</th>
+                <td mat-cell *matCellDef="let element">
+                  {{ element.remarks }}
+                  <button class="remarks-button">
+                    <app-icon icon="small_file"></app-icon>
+                  </button>
+                </td>
+              </ng-container>
+              <ng-container matColumnDef="sspoc">
+                <th mat-header-cell *matHeaderCellDef>Created date</th>
+                <td mat-cell *matCellDef="let element">
+                  {{ element.createdDate | date : 'dd MMM YYYY, h:mma' }}
+                </td>
+              </ng-container>
 
-    <!-- Process -->
-    <div class="section row" *ngIf="data.type === 'jobs' || 'applications'">
-      <div class="col-sm-2">
-        <div class="d-flex align-items-center justify-content-between">
-          <div class="filter-job-location">Process</div>
-          <button
-            *ngIf="selectedFilters.process?.length"
-            title="clear filters"
-            class="close-btn"
-            aria-label="clear filters"
-            (click)="onClearFilter('process')"
-          >
-            <app-icon icon="filter_off"></app-icon>
-          </button>
+              <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+              <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+            </table>
+          </div>
         </div>
-      </div>
-      <div class="col-sm-10">
-        <div class="right-panel">
-          <div class="row">
-            <div class="col-sm-3" *ngFor="let process of PROCESS_OPTIONS">
-              <div class="right-panel-content">
-                <div class="right-panel-checkbox">
-                  <mat-checkbox
-                    class="mt-0 mb-1"
-                    [checked]="selectedFilters.process?.includes(process.value)"
-                    (change)="onFilterSelect(process.value, 'process')"
-                  ></mat-checkbox>
+        <!-- <div *ngIf="mobileView" class="folowup-table-mobile mt-3">
+          <div>
+            <div class="follow-card-mobile" *ngFor="let followup of followups">
+              <div class="row">
+                <div class="col-6">
+                  <h5 class="interview-title">Created date</h5>
+                  <p class="follow-content">
+                    {{ followup.createdDate | date : 'dd MMM YYYY, h:mma' }}
+                  </p>
                 </div>
-                <div class="right-panel-location">
-                  {{ process.display }}
+                <div class="col-6">
+                  <h5 class="interview-title">Hr name</h5>
+                  <p class="follow-content">{{ followup.hrName }}</p>
+                </div>
+                <div class="col-12">
+                  <h5 class="interview-title">Remark</h5>
+                  <p class="follow-content" style="word-wrap: break-word">
+                    {{ followup.remark }}
+                  </p>
                 </div>
               </div>
             </div>
           </div>
-        </div>
+        </div> -->
       </div>
-    </div>
-
-    <!-- Split -->
-    <div class="section row" *ngIf="data.type === 'jobs' || 'applications'">
-      <div class="col-sm-2">
-        <div class="d-flex align-items-center justify-content-between">
-          <div class="filter-job-location">Split</div>
-          <button
-            *ngIf="selectedFilters.split?.length"
-            title="clear filters"
-            class="close-btn"
-            aria-label="clear filters"
-            (click)="onClearFilter('split')"
-          >
-            <app-icon icon="filter_off"></app-icon>
-          </button>
-        </div>
-      </div>
-      <div class="col-sm-10">
-        <div class="right-panel">
-          <div class="row">
-            <div class="col-sm-3" *ngFor="let split of SPLIT_OPTIONS">
-              <div class="right-panel-content">
-                <div class="right-panel-checkbox">
-                  <mat-checkbox
-                    class="mt-0 mb-1"
-                    [checked]="selectedFilters.split?.includes(split.value)"
-                    (change)="onFilterSelect(split.value, 'split')"
-                  ></mat-checkbox>
-                </div>
-                <div class="right-panel-location">
-                  {{ split.display }}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Role -->
-    <div class="section row" *ngIf="data.type === 'jobs' || 'applications'">
-      <div class="col-sm-2">
-        <div class="d-flex align-items-center justify-content-between">
-          <div class="filter-job-location">Role</div>
-          <button
-            *ngIf="selectedFilters.role?.length"
-            title="clear filters"
-            class="close-btn"
-            aria-label="clear filters"
-            (click)="onClearFilter('role')"
-          >
-            <app-icon icon="filter_off"></app-icon>
-          </button>
-        </div>
-      </div>
-      <div class="col-sm-10">
-        <div class="right-panel">
-          <div class="row">
-            <div class="col-sm-3" *ngFor="let role of ROLE_OPTIONS">
-              <div class="right-panel-content">
-                <div class="right-panel-checkbox">
-                  <mat-checkbox
-                    class="mt-0 mb-1"
-                    [checked]="selectedFilters.role?.includes(role.value)"
-                    (change)="onFilterSelect(role.value, 'role')"
-                  ></mat-checkbox>
-                </div>
-                <div class="right-panel-location">
-                  {{ role.display }}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Speciality -->
-    <div class="section row" *ngIf="data.type === 'jobs' || 'applications'">
-      <div class="col-sm-2">
-        <div class="d-flex align-items-center justify-content-between">
-          <div class="filter-job-location">Speciality</div>
-          <button
-            *ngIf="selectedFilters.speciality?.length"
-            title="clear filters"
-            class="close-btn"
-            aria-label="clear filters"
-            (click)="onClearFilter('speciality')"
-          >
-            <app-icon icon="filter_off"></app-icon>
-          </button>
-        </div>
-      </div>
-      <div class="col-sm-10">
-        <div class="right-panel">
-          <div class="row">
-            <div class="col-sm-3" *ngFor="let speciality of SPECIALITY_OPTIONS">
-              <div class="right-panel-content">
-                <div class="right-panel-checkbox">
-                  <mat-checkbox
-                    class="mt-0 mb-1"
-                    [checked]="
-                      selectedFilters.process?.includes(speciality.value)
-                    "
-                    (change)="onFilterSelect(speciality.value, 'speciality')"
-                  ></mat-checkbox>
-                </div>
-                <div class="right-panel-location">
-                  {{ speciality.display }}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Job Type -->
-    <div class="section row" *ngIf="data.type === 'jobs' || 'applications'">
-      <div class="col-sm-2">
-        <div class="d-flex align-items-center justify-content-between">
-          <div class="filter-job-location">Job Type</div>
-          <button
-            *ngIf="selectedFilters.job_type?.length"
-            title="clear filters"
-            class="close-btn"
-            aria-label="clear filters"
-            (click)="onClearFilter('job_type')"
-          >
-            <app-icon icon="filter_off"></app-icon>
-          </button>
-        </div>
-      </div>
-      <div class="col-sm-10">
-        <div class="right-panel">
-          <div class="row">
-            <div class="col-sm-3" *ngFor="let job_type of JOB_TYPE_OPTIONS">
-              <div class="right-panel-content">
-                <div class="right-panel-checkbox">
-                  <mat-checkbox
-                    class="mt-0 mb-1"
-                    [checked]="
-                      selectedFilters.process?.includes(job_type.value)
-                    "
-                    (change)="onFilterSelect(job_type.value, 'job_type')"
-                  ></mat-checkbox>
-                </div>
-                <div class="right-panel-location">
-                  {{ job_type.display }}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Job Location -->
-    <div class="section row" *ngIf="data.type === 'jobs' || 'applications'">
-      <div class="col-sm-2">
-        <div class="d-flex align-items-center justify-content-between">
-          <div class="filter-job-location">Location</div>
-          <button
-            *ngIf="selectedFilters.location?.length"
-            title="clear filters"
-            class="close-btn"
-            aria-label="clear filters"
-            (click)="onClearFilter('location')"
-          >
-            <app-icon icon="filter_off"></app-icon>
-          </button>
-        </div>
-      </div>
-      <div class="col-sm-10">
-        <div class="right-panel">
-          <div class="row">
-            <div class="col-sm-3" *ngFor="let location of LOCATION_OPTIONS">
-              <div class="right-panel-content">
-                <div class="right-panel-checkbox">
-                  <mat-checkbox
-                    class="mt-0 mb-1"
-                    [checked]="
-                      selectedFilters.location?.includes(location.value)
-                    "
-                    (change)="onFilterSelect(location.value, 'location')"
-                  ></mat-checkbox>
-                </div>
-                <div class="right-panel-location">
-                  {{ location.display }}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Shift -->
-    <div class="section row" *ngIf="data.type === 'jobs' || 'applications'">
-      <div class="col-sm-2">
-        <div class="d-flex align-items-center justify-content-between">
-          <div class="filter-job-location">Shift</div>
-          <button
-            *ngIf="selectedFilters.shift?.length"
-            title="clear filters"
-            class="close-btn"
-            aria-label="clear filters"
-            (click)="onClearFilter('shift')"
-          >
-            <app-icon icon="filter_off"></app-icon>
-          </button>
-        </div>
-      </div>
-      <div class="col-sm-10">
-        <div class="right-panel">
-          <div class="row">
-            <div class="col-sm-3" *ngFor="let shift of SHIFT_OPTIONS">
-              <div class="right-panel-content">
-                <div class="right-panel-checkbox">
-                  <mat-checkbox
-                    class="mt-0 mb-1"
-                    [checked]="selectedFilters.shift?.includes(shift.value)"
-                    (change)="onFilterSelect(shift.value, 'shift')"
-                  ></mat-checkbox>
-                </div>
-                <div class="right-panel-location">
-                  {{ shift.display }}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    </ng-container>
   </div>
-
-  <div class="footer-button">
-    <div class="card-style">
-      <!-- <div>
+  <div class="remarks-footer">
+    <div class="row justify-content-end">
+      <div class="col-lg-3 col-6">
         <button
-          title="Clear Filter"
-          class="ags-outline-btn ags-hxl56 btn-font16 ags-padding1624"
-          (click)="clearFiler()"
+          title="Close model"
+          (click)="closeDialog()"
+          class="ags-primary-btn ags-hxl56 ags-padding1624 btn-font16"
         >
-          Clear Filter
-        </button>
-      </div> -->
-      <div>
-        <button
-          title="Apply Filter"
-          class="ags-primary-btn ags-hxl56 btn-font16 ags-padding1624"
-          (click)="applyFilter()"
-        >
-          Apply Filter
+          Close
         </button>
       </div>
     </div>
   </div>
 </div>
+
+
+req.service-method
+
+ getRemarkImage(remarkId: string): Observable<any> {
+    const url = `${environment.API_URL}requisition//job/remarks/${remarkId}/image`;
+    return this.http.get<any>(url);
+  }
+
 
