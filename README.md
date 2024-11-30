@@ -12,3 +12,11 @@ viewRemarkImage(remarkId: string): void {
       }
     );
   }
+
+
+{
+    "message": "SUCCESS",
+    "messageDesc": "https://agstadtdev.s3.ap-south-1.amazonaws.com/0f84f74c-c9e5-4393-9219-074a2426c6b9_Architecture.jpg?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20241130T075553Z&X-Amz-SignedHeaders=host&X-Amz-Expires=604800&X-Amz-Credential=AKIASP5FLSULKIASX4FA%2F20241130%2Fap-south-1%2Fs3%2Faws4_request&X-Amz-Signature=939f866bdc5eab042c99e63ca35d3170a5b451cdc95ab114fea04506603d6dda",
+    "fileName": "0f84f74c-c9e5-4393-9219-074a2426c6b9_Architecture.jpg",
+    "responseStatus": 200
+}
