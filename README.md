@@ -20,3 +20,38 @@ viewRemarkImage(remarkId: string): void {
     "fileName": "0f84f74c-c9e5-4393-9219-074a2426c6b9_Architecture.jpg",
     "responseStatus": 200
 }
+
+
+viewRemarkImage(remarkId: string): void {
+  this.reqService.getRemarkImage(remarkId).subscribe(
+    (response) => {
+      // Ensure the response contains the signed URL in 'messageDesc'
+      const imageUrl = response.messageDesc;
+      const fileName = response.fileName;  // You can use this as the downloaded file name
+
+      // Fetch the image data as a Blob using the signed URL
+      fetch(imageUrl)
+        .then((res) => res.blob())  // Convert the response to a Blob
+        .then((blob) => {
+          // Create a temporary link element for the download
+          const a = document.createElement('a');
+          const objectUrl = URL.createObjectURL(blob);  // Create a URL for the Blob
+          
+          a.href = objectUrl;
+          a.download = fileName || 'download.jpg';  // Use fileName from response or a default name
+          
+          // Programmatically trigger the click to download the file
+          a.click();
+          
+          // Clean up the object URL after the download starts
+          URL.revokeObjectURL(objectUrl);
+        })
+        .catch((error) => {
+          console.error('Error fetching the image:', error);
+        });
+    },
+    (error) => {
+      console.error('Error fetching remark image data:', error);
+    }
+  );
+}
