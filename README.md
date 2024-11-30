@@ -55,3 +55,7 @@ viewRemarkImage(remarkId: string): void {
     }
   );
 }
+
+<span [title]="element.imageName">
+  {{ element.imageName | slice:0:20 }}{{ element.imageName.length > 20 ? '...' : '' }}
+</span>
