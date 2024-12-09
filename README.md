@@ -21,10 +21,7 @@ import { MessageModalsComponent } from '@/src/app/common-modules/message-modals/
   styleUrls: ['./interview-summary-dialog.component.scss'],
 })
 export class InterviewSummaryDialogComponent {
-  form = new FormGroup({
-    status: new FormControl(''),
-    feedBack: new FormControl(''),
-  });
+  form: FormGroup;
   formBuilder: any;
   mobileView = false;
 
@@ -35,10 +32,11 @@ export class InterviewSummaryDialogComponent {
     @Inject(MAT_DIALOG_DATA)
     public summary: {
       application: CandidateApplication;
+      applicationStatus: any,
       interviewProcess: any[];
     }
   ) {
-    console.log(this.summary);
+    console.log(this.summary.applicationStatus);
   }
 
   get PANEL_STATUS_OPTIONS() {
@@ -49,25 +47,38 @@ export class InterviewSummaryDialogComponent {
     this.initiateForm();
   }
 
+  // initiateForm() {
+  //   const interview = this.summary.interviewProcess;
+  //   console.log("MY SUMMARY INSIDE INIT", this.summary);
+  //   this.form = this.formBuilder.group({
+  //     feedBack: [
+  //       {
+  //         value: '',
+  //         disabled: false,
+  //       },
+  //       Validators.required,
+  //     ],
+  //     status: [
+  //       {
+  //         value: '',
+  //         disabled: false,
+  //       },
+  //       Validators.required,
+  //     ],
+  //   });
+  // }
+
   initiateForm() {
-    const interview = this.summary.interviewProcess;
-    console.log("MY SUMMARY INSIDE INIT", this.summary);
-    this.form = this.formBuilder.group({
-      feedBack: [
-        {
-          value: '',
-          disabled: false,
-        },
-        Validators.required,
-      ],
-      status: [
-        {
-          value: '',
-          disabled: false,
-        },
-        Validators.required,
-      ],
+    const interview = this.summary.interviewProcess[0];
+    const firstCandidate = interview.candidates[0];
+
+    this.form = new FormGroup({
+      feedBack: new FormControl('', Validators.required),
+      status: new FormControl(this.summary?.applicationStatus ?? '', Validators.required),
     });
+
+    console.log('FORM INITIALIZED WITH', firstCandidate);
+    console.log('FORM INITIALIZED VALUES', this.form.value);
   }
 
   closeModal() {
@@ -77,26 +88,26 @@ export class InterviewSummaryDialogComponent {
   onSubmit() {
     if (this.form.valid) {
       console.log('FORM VALUES', this.form.value);
-      this.applicationService
-        .updateApplicationStatus(this.summary?.application?.id, this.form.value)
-        .then((_res) => {
-          // setTimeout(() => {
-          this.form.reset();
-          this.dialog.open(MessageModalsComponent, {
-            maxWidth: this.mobileView ? '500px' : '100%',
-            width: this.mobileView ? '100%' : '50%',
-            ...(this.mobileView && {
-              height: '450px',
-              position: { bottom: '0' },
-            }),
-            closeOnNavigation: true,
-            disableClose: true,
-            data: 'panelUpdate',
-          });
-          // }, 2000);
-        });
+      // this.applicationService
+      //   .updateApplicationStatus(this.summary?.application?.id, this.form.value)
+      //   .then((_res) => {
+      //     // setTimeout(() => {
+      //     this.form.reset();
+      //     this.dialog.open(MessageModalsComponent, {
+      //       maxWidth: this.mobileView ? '500px' : '100%',
+      //       width: this.mobileView ? '100%' : '50%',
+      //       ...(this.mobileView && {
+      //         height: '450px',
+      //         position: { bottom: '0' },
+      //       }),
+      //       closeOnNavigation: true,
+      //       disableClose: true,
+      //       data: 'panelUpdate',
+      //     });
+      //     // }, 2000);
+      //   });
     } else {
-      console.log('FORM IS VALID');
+      console.log('FORM IS INVALID');
     }
   }
 
@@ -117,69 +128,3 @@ export class InterviewSummaryDialogComponent {
     return `${percentage}%`;
   }
 }
-
-
-
-interview-details.component.html
-
- <ng-container
-            *ngIf="
-              interview.candidates[0].interviewStatus === 'PROGRESS';
-              else elsePart
-            "
-          >
-            <form [formGroup]="form">
-              <div class="d-flex justify-content-start">
-                <div class="mt-3 form-group form-inner">
-                  <p class="assment-subheading">
-                    Status:&nbsp;&nbsp;
-                    <mat-form-field class="example-form-field">
-                      <mat-select
-                        placeholder="Select status"
-                        formControlName="status"
-                      >
-                        <mat-option
-                          [value]="option.value"
-                          *ngFor="let option of PANEL_STATUS_OPTIONS"
-                          >{{ option.display }}</mat-option
-                        >
-                      </mat-select>
-                    </mat-form-field>
-                  </p>
-                </div>
-              </div>
-              <div class="form-inner mt-3">
-                <label class="panel-feedback" for="feedBack"
-                  >Panel remarks</label
-                >
-                <textarea
-                  formControlName="feedBack"
-                  placeholder="Panel Feedback"
-                  class="text-area"
-                ></textarea>
-              </div>
-            </form>
-          </ng-container>
-
-          <ng-template #elsePart>
-            <p class="assment-subheading">
-              Status:
-              <span
-                [ngClass]="{
-                  'active-green': interview.candidates[0].interviewStatus === 'COMPLETED',
-                  'active-warn': interview.candidates[0].interviewStatus === 'PROGRESS',
-                  'active-error': ['REJECTED', 'FAILED'].includes(
-                    interview.candidates[0].interviewStatus
-                  )
-                }"
-                >{{ getStatus(interview.candidates[0].interviewStatus) }}</span
-              >
-            </p>
-            <div *ngIf="interview.candidates[0].feedback" class="form-inner mt-3">
-              <textarea
-                readonly
-                [value]="interview.candidates[0].feedback"
-                class="text-area"
-              ></textarea>
-            </div>
-          </ng-template>
