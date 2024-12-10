@@ -1,5 +1,18 @@
 https://teams.microsoft.com/l/meetup-join/19%3ameeting_ODliN2VjZjktZjM2MS00OGQ4LWFhMzUtZjAwNTJkMTRkY2Y4%40thread.v2/0?context=%7b%22Tid%22%3a%22f6fb95f2-bd20-41a4-b19a-c7fcf96d09a7%22%2c%22Oid%22%3a%2238c62280-1dc6-4ce5-b5b4-8a068650cb44%22%7d
 
+downloadDetails(params: any): Observable<Blob> {
+    console.log("PARAMS START", params?.startDate);
+    console.log('PARAMS END', params?.endDate);
+
+    const url = `${environment.API_URL}auth-services/report/download`;
+
+    https: return this.httpClient.get(url, {
+      responseType: 'blob',
+    });
+  }
+
+https://uat-jobs.agshealth.com/devapi/auth-services/report/download?startDate=2023-07-01&endDate=2024-01-25
+
 onSubmit() {
   console.log('THE FORM VALUE', this.form.value);
 
