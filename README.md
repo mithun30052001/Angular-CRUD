@@ -5,6 +5,29 @@ https://teams.microsoft.com/l/meetup-join/19%3ameeting_ODliN2VjZjktZjM2MS00OGQ4L
     "endDate": "2024-12-10T18:30:00.000Z"
 }
 
+
+ onSubmit() {
+    console.log('THE FORM VALUE', this.form.value);
+
+     this.authService.downloadDetails().subscribe(
+       (response: any) => {
+         const downlaodUrl = window.URL.createObjectURL(response);
+
+         const a = document.createElement('a');
+         a.href = downlaodUrl;
+         a.download = 'candidate_list.xlsx';
+         a.click();
+         document.body.removeChild(a);
+
+         window.URL.revokeObjectURL(downlaodUrl);
+         console.log('file downloadeddddd', downlaodUrl);
+       },
+       (error) => {
+         console.error('Error downloading file', error);
+       }
+     );
+  }
+  
 download-candidate-list-dialog.ts
 
 import { Component, Inject } from '@angular/core';
