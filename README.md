@@ -1,32 +1,43 @@
 https://teams.microsoft.com/l/meetup-join/19%3ameeting_ODliN2VjZjktZjM2MS00OGQ4LWFhMzUtZjAwNTJkMTRkY2Y4%40thread.v2/0?context=%7b%22Tid%22%3a%22f6fb95f2-bd20-41a4-b19a-c7fcf96d09a7%22%2c%22Oid%22%3a%2238c62280-1dc6-4ce5-b5b4-8a068650cb44%22%7d
 
-{
-    "startDate": "2024-11-30T18:30:00.000Z",
-    "endDate": "2024-12-10T18:30:00.000Z"
+onSubmit() {
+  console.log('THE FORM VALUE', this.form.value);
+
+  // Get startDate and endDate values from the form
+  const startDate = this.form.value.startDate;
+  const endDate = this.form.value.endDate;
+
+  // Prepare query params (only include if dates are not null)
+  let params: any = {};
+  
+  // Format dates to 'YYYY-MM-DD' if they are not null
+  if (startDate) {
+    params.startDate = new Date(startDate).toISOString().split('T')[0]; // Format as 'YYYY-MM-DD'
+  }
+  if (endDate) {
+    params.endDate = new Date(endDate).toISOString().split('T')[0]; // Format as 'YYYY-MM-DD'
+  }
+
+  // Call the downloadDetails API with params
+  this.authService.downloadDetails(params).subscribe(
+    (response: any) => {
+      const downloadUrl = window.URL.createObjectURL(response);
+
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = 'candidate_list.xlsx';
+      a.click();
+      document.body.removeChild(a);
+
+      window.URL.revokeObjectURL(downloadUrl);
+      console.log('file downloaded', downloadUrl);
+    },
+    (error) => {
+      console.error('Error downloading file', error);
+    }
+  );
 }
 
-
- onSubmit() {
-    console.log('THE FORM VALUE', this.form.value);
-
-     this.authService.downloadDetails().subscribe(
-       (response: any) => {
-         const downlaodUrl = window.URL.createObjectURL(response);
-
-         const a = document.createElement('a');
-         a.href = downlaodUrl;
-         a.download = 'candidate_list.xlsx';
-         a.click();
-         document.body.removeChild(a);
-
-         window.URL.revokeObjectURL(downlaodUrl);
-         console.log('file downloadeddddd', downlaodUrl);
-       },
-       (error) => {
-         console.error('Error downloading file', error);
-       }
-     );
-  }
   
 download-candidate-list-dialog.ts
 
