@@ -32,3 +32,19 @@ https://teams.microsoft.com/l/meetup-join/19%3ameeting_ODliN2VjZjktZjM2MS00OGQ4L
     this.form.get('feedBack')?.disable();
     this.form.get('status')?.disable();
   }
+
+
+  <mat-form-field class="example-form-field">
+                    <mat-select
+                      placeholder="Select status"
+                      formControlName="status"
+                      [disabled]="formSubmitted"
+                    >
+                      <mat-option
+                        [value]="option.value"
+                        *ngFor="let option of PANEL_STATUS_OPTIONS"
+                      >
+                        {{ option.display }}
+                      </mat-option>
+                    </mat-select>
+                  </mat-form-field>
