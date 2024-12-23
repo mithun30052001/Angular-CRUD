@@ -1,79 +1,10 @@
 https://teams.microsoft.com/l/meetup-join/19%3ameeting_ODliN2VjZjktZjM2MS00OGQ4LWFhMzUtZjAwNTJkMTRkY2Y4%40thread.v2/0?context=%7b%22Tid%22%3a%22f6fb95f2-bd20-41a4-b19a-c7fcf96d09a7%22%2c%22Oid%22%3a%2238c62280-1dc6-4ce5-b5b4-8a068650cb44%22%7d
 
-form div in interview-summary.component.html
-
-  <div
-          *ngIf="
-            ['ASSESMENT', 'VERSANT', 'PANEL'].includes(interview.interviewType)
-          "
-          class="assessment-interview"
-        >
-          <form [formGroup]="form" (ngSubmit)="onSubmit()">
-            <div class="d-flex justify-content-start">
-              <div class="mt-3 form-group form-inner">
-                <p class="assment-subheading">
-                  Status:&nbsp;&nbsp;
-                  <mat-form-field class="example-form-field">
-                    <mat-select
-                      placeholder="Select status"
-                      formControlName="status"
-                    >
-                      <mat-option
-                        [value]="option.value"
-                        *ngFor="let option of PANEL_STATUS_OPTIONS"
-                      >
-                        {{ option.display }}
-                      </mat-option>
-                    </mat-select>
-                  </mat-form-field>
-                </p>
-              </div>
-            </div>
-
-            <div class="form-inner mt-3">
-              <label class="panel-feedback" for="feedBack">Panel remarks</label>
-              <textarea
-                formControlName="feedBack"
-                placeholder="Panel Feedback"
-                class="text-area"
-                [value]="
-                  interview?.candidates[0]?.feedback
-                    ? interview.candidates[0].feedback
-                    : ''
-                "
-                >{{
-                  interview?.candidates[0]?.feedback
-                    ? interview.candidates[0].feedback
-                    : ''
-                }}</textarea
-              >
-            </div>
-
-            <div class="submit-btn">
-              <button
-                mat-raised-button
-                color="primary"
-                type="submit"
-                [disabled]="form.invalid"
-              >
-                Update
-              </button>
-            </div>
-          </form>
-        </div>
-
-interview-summary-dialog.component.ts
-
 import { CandidateApplication, Quiz } from '@/src/app/interfaces/app-interface';
 import { Component, Inject, OnInit } from '@angular/core';
 import { FormControl, FormGroup, Validators } from '@angular/forms';
-import {
-  MatDialog,
-  MatDialogRef,
-  MAT_DIALOG_DATA,
-} from '@angular/material/dialog';
+import { MatDialog, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { capitalize } from 'lodash-es';
-import { PANEL_STATUS_OPTIONS } from '@/src/app/constants/app.constants';
 import { PANEL_STATUS_OPTIONS_V2 } from '@/src/app/constants/app.constants';
 import { ApplicationService } from '../../services/job-application.service';
 import { MessageModalsComponent } from '@/src/app/common-modules/message-modals/message-modals.component';
@@ -83,9 +14,9 @@ import { MessageModalsComponent } from '@/src/app/common-modules/message-modals/
   templateUrl: './interview-summary-dialog.component.html',
   styleUrls: ['./interview-summary-dialog.component.scss'],
 })
-export class InterviewSummaryDialogComponent implements OnInit{
+export class InterviewSummaryDialogComponent implements OnInit {
   form: FormGroup;
-  formBuilder: any;
+  formSubmitted = false; // Flag to track if the form is submitted
   mobileView = false;
 
   constructor(
@@ -94,8 +25,8 @@ export class InterviewSummaryDialogComponent implements OnInit{
     private applicationService: ApplicationService,
     @Inject(MAT_DIALOG_DATA)
     public summary: {
-        application: CandidateApplication;
-      applicationStatus: string,
+      application: CandidateApplication;
+      applicationStatus: string;
       interviewProcess: any;
     }
   ) {
@@ -132,6 +63,11 @@ export class InterviewSummaryDialogComponent implements OnInit{
       this.form.patchValue({
         status: initialStatus ?? '',
       });
+
+      // If the form has been previously submitted, disable the controls
+      if (this.formSubmitted) {
+        this.form.disable();
+      }
     }
   }
 
@@ -145,8 +81,10 @@ export class InterviewSummaryDialogComponent implements OnInit{
       this.applicationService
         .updateApplicationStatus(this.summary?.application?.id, this.form.value)
         .then((_res) => {
-          // setTimeout(() => {
-          this.form.reset();
+          this.formSubmitted = true; // Mark the form as submitted
+          this.form.disable(); // Disable the form controls after submission
+
+          // Open a modal or any other action you want to perform
           this.dialog.open(MessageModalsComponent, {
             maxWidth: this.mobileView ? '500px' : '100%',
             width: this.mobileView ? '100%' : '50%',
@@ -158,10 +96,9 @@ export class InterviewSummaryDialogComponent implements OnInit{
             disableClose: true,
             data: 'panelUpdate',
           });
-          // }, 2000);
         });
     } else {
-      console.log('FORM IS VALID');
+      console.log('FORM IS INVALID');
     }
   }
 
