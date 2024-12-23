@@ -1,220 +1,184 @@
 https://teams.microsoft.com/l/meetup-join/19%3ameeting_ODliN2VjZjktZjM2MS00OGQ4LWFhMzUtZjAwNTJkMTRkY2Y4%40thread.v2/0?context=%7b%22Tid%22%3a%22f6fb95f2-bd20-41a4-b19a-c7fcf96d09a7%22%2c%22Oid%22%3a%2238c62280-1dc6-4ce5-b5b4-8a068650cb44%22%7d
 
-downloadDetails(params: any): Observable<Blob> {
-  console.log("PARAMS START", params?.startDate);
-  console.log("PARAMS END", params?.endDate);
+form div in interview-summary.component.html
 
-  let url = `${environment.API_URL}auth-services/report/download`;
+  <div
+          *ngIf="
+            ['ASSESMENT', 'VERSANT', 'PANEL'].includes(interview.interviewType)
+          "
+          class="assessment-interview"
+        >
+          <form [formGroup]="form" (ngSubmit)="onSubmit()">
+            <div class="d-flex justify-content-start">
+              <div class="mt-3 form-group form-inner">
+                <p class="assment-subheading">
+                  Status:&nbsp;&nbsp;
+                  <mat-form-field class="example-form-field">
+                    <mat-select
+                      placeholder="Select status"
+                      formControlName="status"
+                    >
+                      <mat-option
+                        [value]="option.value"
+                        *ngFor="let option of PANEL_STATUS_OPTIONS"
+                      >
+                        {{ option.display }}
+                      </mat-option>
+                    </mat-select>
+                  </mat-form-field>
+                </p>
+              </div>
+            </div>
 
-  // Check if startDate or endDate are provided in params, and append them to the URL
-  const queryParams: string[] = [];
+            <div class="form-inner mt-3">
+              <label class="panel-feedback" for="feedBack">Panel remarks</label>
+              <textarea
+                formControlName="feedBack"
+                placeholder="Panel Feedback"
+                class="text-area"
+                [value]="
+                  interview?.candidates[0]?.feedback
+                    ? interview.candidates[0].feedback
+                    : ''
+                "
+                >{{
+                  interview?.candidates[0]?.feedback
+                    ? interview.candidates[0].feedback
+                    : ''
+                }}</textarea
+              >
+            </div>
 
-  if (params?.startDate) {
-    queryParams.push(`startDate=${params.startDate}`);
+            <div class="submit-btn">
+              <button
+                mat-raised-button
+                color="primary"
+                type="submit"
+                [disabled]="form.invalid"
+              >
+                Update
+              </button>
+            </div>
+          </form>
+        </div>
+
+interview-summary-dialog.component.ts
+
+import { CandidateApplication, Quiz } from '@/src/app/interfaces/app-interface';
+import { Component, Inject, OnInit } from '@angular/core';
+import { FormControl, FormGroup, Validators } from '@angular/forms';
+import {
+  MatDialog,
+  MatDialogRef,
+  MAT_DIALOG_DATA,
+} from '@angular/material/dialog';
+import { capitalize } from 'lodash-es';
+import { PANEL_STATUS_OPTIONS } from '@/src/app/constants/app.constants';
+import { PANEL_STATUS_OPTIONS_V2 } from '@/src/app/constants/app.constants';
+import { ApplicationService } from '../../services/job-application.service';
+import { MessageModalsComponent } from '@/src/app/common-modules/message-modals/message-modals.component';
+
+@Component({
+  selector: 'app-interview-summary-dialog',
+  templateUrl: './interview-summary-dialog.component.html',
+  styleUrls: ['./interview-summary-dialog.component.scss'],
+})
+export class InterviewSummaryDialogComponent implements OnInit{
+  form: FormGroup;
+  formBuilder: any;
+  mobileView = false;
+
+  constructor(
+    private dialogRef: MatDialogRef<InterviewSummaryDialogComponent>,
+    public dialog: MatDialog,
+    private applicationService: ApplicationService,
+    @Inject(MAT_DIALOG_DATA)
+    public summary: {
+        application: CandidateApplication;
+      applicationStatus: string,
+      interviewProcess: any;
+    }
+  ) {
+    console.log(this.summary);
   }
-  if (params?.endDate) {
-    queryParams.push(`endDate=${params.endDate}`);
+
+  get PANEL_STATUS_OPTIONS() {
+    return PANEL_STATUS_OPTIONS_V2;
   }
 
-  // If queryParams has any parameters, join them into the URL
-  if (queryParams.length > 0) {
-    url = `${url}?${queryParams.join('&')}`;
+  ngOnInit(): void {
+    this.initiateForm();
+    this.setInitialValues();
   }
 
-  // Log the final URL
-  console.log('Final URL:', url);
-
-  return this.httpClient.get(url, {
-    responseType: 'blob',
-  });
-}
-
-
-downloadDetails(params: any): Observable<Blob> {
-    console.log("PARAMS START", params?.startDate);
-    console.log('PARAMS END', params?.endDate);
-
-    const url = `${environment.API_URL}auth-services/report/download`;
-
-    https: return this.httpClient.get(url, {
-      responseType: 'blob',
+  initiateForm() {
+    this.form = new FormGroup({
+      feedBack: new FormControl('', Validators.required),
+      status: new FormControl('', Validators.required),
     });
   }
 
-https://uat-jobs.agshealth.com/devapi/auth-services/report/download?startDate=2023-07-01&endDate=2024-01-25
+  setInitialValues() {
+    let interview = this.summary.interviewProcess;
+    interview = interview[interview.length - 1];
+    const candidate = interview?.candidates[0];
 
-onSubmit() {
-  console.log('THE FORM VALUE', this.form.value);
+    if (interview != null) {
+      this.form.patchValue({
+        feedBack: candidate?.feedback ?? '',
+      });
 
-  // Get startDate and endDate values from the form
-  const startDate = this.form.value.startDate;
-  const endDate = this.form.value.endDate;
-
-  // Prepare query params (only include if dates are not null)
-  let params: any = {};
-  
-  // Format dates to 'YYYY-MM-DD' if they are not null
-  if (startDate) {
-    params.startDate = new Date(startDate).toISOString().split('T')[0]; // Format as 'YYYY-MM-DD'
-  }
-  if (endDate) {
-    params.endDate = new Date(endDate).toISOString().split('T')[0]; // Format as 'YYYY-MM-DD'
-  }
-
-  // Call the downloadDetails API with params
-  this.authService.downloadDetails(params).subscribe(
-    (response: any) => {
-      const downloadUrl = window.URL.createObjectURL(response);
-
-      const a = document.createElement('a');
-      a.href = downloadUrl;
-      a.download = 'candidate_list.xlsx';
-      a.click();
-      document.body.removeChild(a);
-
-      window.URL.revokeObjectURL(downloadUrl);
-      console.log('file downloaded', downloadUrl);
-    },
-    (error) => {
-      console.error('Error downloading file', error);
+      const initialStatus = this.summary?.applicationStatus;
+      this.form.patchValue({
+        status: initialStatus ?? '',
+      });
     }
-  );
-}
-
-  
-download-candidate-list-dialog.ts
-
-import { Component, Inject } from '@angular/core';
-import {
-  AbstractControl,
-  FormBuilder,
-  FormGroup,
-  Validators,
-} from '@angular/forms';
-import { MatDialog,MatDialogRef } from '@angular/material/dialog';
-import { AuthService } from '../../services/auth.service';
-
-@Component({
-  selector: 'app-download-candidate-list-dialog',
-  templateUrl: './download-candidate-list-dialog.component.html',
-  styleUrls: ['./download-candidate-list-dialog.component.scss'],
-})
-export class DownloadCandidateListDialogComponent{
-  form: FormGroup;
-  get f(): { [key: string]: AbstractControl } {
-    return this.form.controls;
   }
-  min = new Date();
-  timingList: any = [];
-  constructor(
-    private fb: FormBuilder,
-    private dialogRef: MatDialogRef<DownloadCandidateListDialogComponent>,
-    public dialog: MatDialog,
-    public authService: AuthService
-  ) {
-    console.log("Inside dialog");
-  }
+
   closeModal() {
     this.dialogRef.close();
   }
-  onDateChange(event: any) {
-    console.log('on date change', event);
-  }
-
-  initForm() {
-    this.form = this.fb.group({
-      startDate: ['', [Validators.required]],
-      endDate: ['', [Validators.required]],
-    });
-  }
 
   onSubmit() {
-    console.log('THE FORM VALUE', this.form.value);
+    if (this.form.valid) {
+      console.log('FORM VALUES', this.form.value);
+      this.applicationService
+        .updateApplicationStatus(this.summary?.application?.id, this.form.value)
+        .then((_res) => {
+          // setTimeout(() => {
+          this.form.reset();
+          this.dialog.open(MessageModalsComponent, {
+            maxWidth: this.mobileView ? '500px' : '100%',
+            width: this.mobileView ? '100%' : '50%',
+            ...(this.mobileView && {
+              height: '450px',
+              position: { bottom: '0' },
+            }),
+            closeOnNavigation: true,
+            disableClose: true,
+            data: 'panelUpdate',
+          });
+          // }, 2000);
+        });
+    } else {
+      console.log('FORM IS VALID');
+    }
+  }
+
+  getStatus(status: 'COMPLETED' | 'PROGRESS' | 'FAILED') {
+    if (status === 'COMPLETED') return 'Selected';
+    if (status === 'PROGRESS') return 'In Progress';
+    if (status === 'FAILED') return 'Rejected';
+    else return capitalize(status);
+  }
+
+  calculatePercentage(quiz: Quiz) {
+    let percentage = 0;
+    const partial = quiz.score;
+    const total = quiz.noOfQuestions;
+    if (!partial || !total) return '0%';
+    percentage = (100 * partial) / total;
+
+    return `${percentage}%`;
   }
 }
-
-download-candidate-list-dialog.html
-
-<div class="event-edit-modal">
-  <div class="event-edit-header">
-    <h5 class="heading-text">Edit Event</h5>
-    <app-icon icon="close" (click)="closeModal()"></app-icon>
-  </div>
-  <form class="form-item" [formGroup]="form" (ngSubmit)="onSubmit()">
-    <div class="event-edit-body">
-      <div class="resume-upload">
-        <div class="row">
-          <div class="col-lg-12 col-sm-12">
-            <div class="form-group form-inner">
-              <label class="form-label" for="experiencedPeriod"
-                >Start Date <span class="required"></span
-              ></label>
-              <div class="form-datepicker form-datepicker-custom">
-                <input
-                  class="form-control"
-                  type="text"
-                  id="startPicker"
-                  formControlName="startDate"
-                  placeholder="Choose a date"
-                  [matDatepicker]="startPicker"
-                  (dateChange)="onDateChange($event.value)"
-                />
-                <mat-datepicker-toggle
-                  matIconSuffix
-                  [for]="startPicker"
-                ></mat-datepicker-toggle>
-              </div>
-              <mat-datepicker #startPicker></mat-datepicker>
-            </div>
-          </div>
-          <div class="col-lg-12 col-sm-12">
-            <div class="form-group form-inner">
-              <label class="form-label" for="experiencedPeriod"
-                >End Date <span class="required"></span
-              ></label>
-              <div class="form-datepicker form-datepicker-custom">
-                <input
-                  class="form-control"
-                  type="text"
-                  id="endPicker"
-                  formControlName="endDate"
-                  placeholder="Choose a date"
-                  [matDatepicker]="endPicker"
-                  (dateChange)="onDateChange($event.value)"
-                />
-                <mat-datepicker-toggle
-                  matIconSuffix
-                  [for]="endPicker"
-                ></mat-datepicker-toggle>
-              </div>
-              <mat-datepicker #endPicker></mat-datepicker>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="event-edit-footer">
-      <div class="row justify-content-end">
-        <div class="col-lg-3 col-6">
-          <button
-            type="button"
-            (click)="closeModal()"
-            class="ags-outline-btn ags-hxl56 ags-padding1624 btn-font16"
-          >
-            Cancel
-          </button>
-        </div>
-        <div class="col-lg-3 col-6">
-          <button
-            type="submit"
-            (click)="onSubmit"
-            class="ags-primary-btn ags-hxl56 ags-padding1624 btn-font16"
-          >
-            Download Candidate List
-          </button>
-        </div>
-      </div>
-    </div>
-  </form>
-</div>
-
