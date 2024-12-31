@@ -24,3 +24,20 @@ validateReqAc(value: string): void {
     const value = event.target.value;
     this.validateReqAc(value);
   }
+
+
+
+
+
+ <mat-select 
+        placeholder="Select Requisition Number" 
+        formControlName="reqAcControl"
+        (selectionChange)="reqSelected($event)"
+      >
+        <mat-option
+          *ngFor="let item of reqAc$"
+          [value]="item.requisitionId"
+        >
+          {{ item.requisitionId }} ({{ item.clientName }})
+        </mat-option>
+      </mat-select>
