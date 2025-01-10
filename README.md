@@ -18,6 +18,37 @@ Add a label or text near the upload button that clearly states the acceptable fi
       </div>
 
 
-      <small class="form-text text-muted">
-      Acceptable file formats: <strong>PDF, PNG, JPEG, JPG</strong>. Maximum file size: <strong>1 MB</strong>.
-    </small>
+.css
+
+.form-label .file-info {
+  font-size: 0.875rem; /* Slightly smaller text */
+  color: #6c757d; /* Muted color for the file info */
+  display: block; /* Ensures the text appears on a new line */
+  margin-top: 5px; /* Adds some space above the file information */
+}
+
+.form-label .file-info strong {
+  color: #495057; /* Darker color for the important information */
+}
+
+
+
+
+    <div class="col-lg-4 col-sm-4" *ngIf="isHiringUpdate === true && openNumbersChanged">
+  <div class="form-group ags-form-group">
+    <label for="openNumbersProof" class="form-label">
+      Upload Proof <span class="required"></span><br />
+      <small class="file-info">
+        Acceptable file formats: <strong>PDF, PNG, JPEG, JPG</strong> | Maximum file size: <strong>1 MB</strong>
+      </small>
+    </label>
+    <input
+      type="file"
+      formControlName="openNumbersProof"
+      class="form-control"
+      accept=".pdf,.png,.jpg,.jpeg"
+      (change)="onFileChange($event)"
+      required
+    />
+  </div>
+</div>
