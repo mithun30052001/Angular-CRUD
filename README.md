@@ -16,3 +16,8 @@ Add a label or text near the upload button that clearly states the acceptable fi
           />
         </div>
       </div>
+
+
+      <small class="form-text text-muted">
+      Acceptable file formats: <strong>PDF, PNG, JPEG, JPG</strong>. Maximum file size: <strong>1 MB</strong>.
+    </small>
