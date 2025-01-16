@@ -1,206 +1,123 @@
 https://teams.microsoft.com/l/meetup-join/19%3ameeting_ODliN2VjZjktZjM2MS00OGQ4LWFhMzUtZjAwNTJkMTRkY2Y4%40thread.v2/0?context=%7b%22Tid%22%3a%22f6fb95f2-bd20-41a4-b19a-c7fcf96d09a7%22%2c%22Oid%22%3a%2238c62280-1dc6-4ce5-b5b4-8a068650cb44%22%7d
 
-candidate-view-profile.component.ts
-
-case 'PANEL_SELECTED': {
-        console.log('panel selected - shortlist candidate');
-        console.log(status)
-        console.log("profile requisition",this.profile?.requisitionId)
-        this.application
-          .updateApplicationStatus(
-            this.applicationId,
-            {
-              status: 'SHORTLISTED',
-              feedBack: '',
-            },
-            null,
-            true
-          )
-          .then((_res) => {
-            this.getApplication();
-            this.dialog.open(MessageModalsComponent, {
-              maxWidth: this.mobileView ? '500px' : '100%',
-              width: this.mobileView ? '100%' : '30%',
-              ...(this.mobileView && {
-                height: '450px',
-                position: { bottom: '0' },
-              }),
-              closeOnNavigation: true,
-              disableClose: true,
-              data: 'shortList',
-            });
-          });
-        break;
-  }
-
-Example dialog component
-
-download-candidate-list-dialog.component.ts
+shortlist-candidate-dialog.ts
 
 import { Component, Inject, OnInit } from '@angular/core';
-import {
-  AbstractControl,
-  FormBuilder,
-  FormGroup,
-  Validators,
-} from '@angular/forms';
-import { MatDialog,MatDialogRef } from '@angular/material/dialog';
-import { AuthService } from '../../services/auth.service';
+import { AbstractControl, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 
 @Component({
-  selector: 'app-download-candidate-list-dialog',
-  templateUrl: './download-candidate-list-dialog.component.html',
-  styleUrls: ['./download-candidate-list-dialog.component.scss'],
+  selector: 'app-shortlist-candidate-dialog',
+  templateUrl: './shortlist-candidate-dialog.component.html',
+  styleUrls: ['./shortlist-candidate-dialog.component.scss'],
 })
-export class DownloadCandidateListDialogComponent implements OnInit {
+export class ShortlistCandidateDialogComponent implements OnInit {
   form: FormGroup;
-  get f(): { [key: string]: AbstractControl } {
-    return this.form.controls;
-  }
-  min = new Date();
-  timingList: any = [];
+  minDate = new Date();
+
   constructor(
     private fb: FormBuilder,
-    private dialogRef: MatDialogRef<DownloadCandidateListDialogComponent>,
-    public dialog: MatDialog,
-    public authService: AuthService
-  ) {
-    console.log('Inside dialog');
-  }
+    public dialogRef: MatDialogRef<ShortlistCandidateDialogComponent>,
+    @Inject(MAT_DIALOG_DATA) public data: any
+  ) {}
 
   ngOnInit(): void {
     this.initForm();
   }
 
-  closeModal() {
-    this.dialogRef.close();
-  }
-  onDateChange(event: any) {
-    console.log('on date change', event);
-  }
-
   initForm() {
+    // Initialize form with requisitionId prefilled if available, and joinedDate empty
     this.form = this.fb.group({
-      startDate: [''],
-      endDate: [''],
+      requisitionId: [{ value: this.data.requisitionId || '', disabled: !!this.data.requisitionId }, [Validators.required]],
+      joinedDate: ['', Validators.required]
     });
   }
 
+  closeModal() {
+    this.dialogRef.close();
+  }
+
   onSubmit() {
-    console.log('THE FORM VALUE', this.form.value);
-    const startDate = this.form.value.startDate;
-    const endDate = this.form.value.endDate;
-
-    let params: any = {};
-
-    if (startDate) {
-      params.startDate = new Date(startDate).toISOString().split('T')[0]; // Format as 'YYYY-MM-DD'
+    if (this.form.valid) {
+      const formValues = this.form.value;
+      this.dialogRef.close(formValues); // Pass the form values back to the parent component
     }
-    if (endDate) {
-      params.endDate = new Date(endDate).toISOString().split('T')[0]; // Format as 'YYYY-MM-DD'
-    }
+  }
 
-    this.authService.downloadDetails(params).subscribe(
-      (response: any) => {
-        const downloadUrl = window.URL.createObjectURL(response);
-
-        const a = document.createElement('a');
-        a.href = downloadUrl;
-        a.download = 'candidate_applications.csv';
-        a.click();
-        document.body.removeChild(a);
-
-        window.URL.revokeObjectURL(downloadUrl);
-        console.log('file downloaded', downloadUrl);
-      },
-      (error) => {
-        console.error('Error downloading file', error);
-      }
-    );
+  get f() {
+    return this.form.controls;
   }
 }
 
-download-candidate-list-dialog.component.html
 
-<div class="event-edit-modal">
-  <div class="event-edit-header">
-    <h5 class="heading-text">Candidate Details Download</h5>
+
+shortlist-candidate-dialog.component.html
+
+<div class="shortlist-dialog">
+  <div class="header">
+    <h5 class="heading-text">Shortlist Candidate</h5>
     <app-icon icon="close" (click)="closeModal()"></app-icon>
   </div>
-  <form class="form-item" [formGroup]="form" (ngSubmit)="onSubmit()">
-    <div class="event-edit-body">
-      <div class="resume-upload">
-        <div class="row">
-          <div class="col-lg-12 col-sm-12">
-            <div class="form-group form-inner">
-              <label class="form-label" for="experiencedPeriod"
-                >Start Date
-              </label>
-              <div class="form-datepicker form-datepicker-custom">
-                <input
-                  (dateChange)="onDateChange($event)"
-                  placeholder="Choose a date"
-                  formControlName="startDate"
-                  readonly
-                  class="form-control"
-                  id="startPicker"
-                  [matDatepicker]="startPicker"
-                />
-                <mat-datepicker-toggle
-                  matIconSuffix
-                  [for]="startPicker"
-                ></mat-datepicker-toggle>
-              </div>
-              <mat-datepicker #startPicker></mat-datepicker>
-            </div>
-          </div>
-          <div class="col-lg-12 col-sm-12">
-            <div class="form-group form-inner">
-              <label class="form-label" for="experiencedPeriod"
-                >End Date
-              </label>
-              <div class="form-datepicker form-datepicker-custom">
-                <input
-                  (dateChange)="onDateChange($event)"
-                  placeholder="Choose a date"
-                  formControlName="endDate"
-                  readonly
-                  class="form-control"
-                  id="endPicker"
-                  [matDatepicker]="endPicker"
-                />
-                <mat-datepicker-toggle
-                  matIconSuffix
-                  [for]="endPicker"
-                ></mat-datepicker-toggle>
-              </div>
-              <mat-datepicker #endPicker></mat-datepicker>
-            </div>
-          </div>
-        </div>
+  <form [formGroup]="form" (ngSubmit)="onSubmit()">
+    <div class="body">
+      <div class="form-group">
+        <label for="requisitionId">Requisition ID</label>
+        <input
+          formControlName="requisitionId"
+          id="requisitionId"
+          type="text"
+          class="form-control"
+          [readonly]="true"
+        />
+      </div>
+      <div class="form-group">
+        <label for="joinedDate">Joined Date</label>
+        <input
+          formControlName="joinedDate"
+          matDatepicker
+          [min]="minDate"
+          placeholder="Choose a date"
+          class="form-control"
+          id="joinedDate"
+        />
+        <mat-datepicker-toggle matIconSuffix [for]="joinedDatePicker"></mat-datepicker-toggle>
+        <mat-datepicker #joinedDatePicker></mat-datepicker>
       </div>
     </div>
-    <div class="event-edit-footer">
-      <div class="row justify-content-end">
-        <div class="col-lg-3 col-6">
-          <button
-            type="button"
-            (click)="closeModal()"
-            class="ags-outline-btn ags-hxl56 ags-padding1624 btn-font16"
-          >
-            Cancel
-          </button>
-        </div>
-        <div class="col-lg-5 col-6">
-          <button
-            type="submit"
-            class="ags-primary-btn ags-hxl56 ags-padding1624 btn-font16"
-          >
-            Download Candidate List
-          </button>
-        </div>
-      </div>
+    <div class="footer">
+      <button type="button" class="cancel-btn" (click)="closeModal()">Cancel</button>
+      <button type="submit" class="shortlist-btn">Shortlist Candidate</button>
     </div>
   </form>
 </div>
 
+
+
+case in candidate-view
+
+const dialogRef = this.dialog.open(ShortlistCandidateDialogComponent, {
+      width: this.mobileView ? '100%' : '30%',
+      maxWidth: this.mobileView ? '500px' : '100%',
+      data: {
+        requisitionId: this.profile?.requisitionId || '' // Pass the requisitionId if available
+      }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        // API call to update application status
+        const { requisitionId, joinedDate } = result;
+        const payload = {
+          status: 'SHORTLISTED',
+          requisitionId: requisitionId,
+          joinedDate: joinedDate
+        };
+
+        this.applicationService.updateApplicationStatus(this.applicationId, payload).then(() => {
+          // Do any follow-up logic (e.g., refresh data)
+          this.getApplication();
+        }).catch(err => {
+          console.error('Error updating application status', err);
+        });
+      }
+    });
