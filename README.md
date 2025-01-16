@@ -1,79 +1,206 @@
 https://teams.microsoft.com/l/meetup-join/19%3ameeting_ODliN2VjZjktZjM2MS00OGQ4LWFhMzUtZjAwNTJkMTRkY2Y4%40thread.v2/0?context=%7b%22Tid%22%3a%22f6fb95f2-bd20-41a4-b19a-c7fcf96d09a7%22%2c%22Oid%22%3a%2238c62280-1dc6-4ce5-b5b4-8a068650cb44%22%7d
 
-listenForValueChanges() {
-    // primary and secondary panel members autocomplete
-    this.primaryPanelAc$ = this.primaryPanelAcControl.valueChanges.pipe(
-      startWith(''),
-      // delay emits
-      debounceTime(300),
-      // use switch map so as to cancel previous subscribed events, before creating new once
-      switchMap((value) => {
-        if (value !== '') {
-          if (value?.employeeName) {
-            return of(null);
-          }
+candidate-view-profile.component.ts
 
-          return this.panelLookup(value);
-        } else {
-          // if no value is present, return null
-          return this.panelLookup('');
-        }
-      })
-    );
+case 'PANEL_SELECTED': {
+        console.log('panel selected - shortlist candidate');
+        console.log(status)
+        console.log("profile requisition",this.profile?.requisitionId)
+        this.application
+          .updateApplicationStatus(
+            this.applicationId,
+            {
+              status: 'SHORTLISTED',
+              feedBack: '',
+            },
+            null,
+            true
+          )
+          .then((_res) => {
+            this.getApplication();
+            this.dialog.open(MessageModalsComponent, {
+              maxWidth: this.mobileView ? '500px' : '100%',
+              width: this.mobileView ? '100%' : '30%',
+              ...(this.mobileView && {
+                height: '450px',
+                position: { bottom: '0' },
+              }),
+              closeOnNavigation: true,
+              disableClose: true,
+              data: 'shortList',
+            });
+          });
+        break;
+  }
 
-    this.secondaryPanelAc$ = this.secondaryPanelAcControl.valueChanges.pipe(
-      startWith(''),
-      debounceTime(300),
-      switchMap((value) => {
-        if (value !== '') {
-          if (value?.employeeName) {
-            return of(null);
-          }
+Example dialog component
 
-          return this.panelLookup(value);
-        } else {
-          // if no value is present, return null
-          return this.panelLookup('');
-        }
-      })
-    );
+download-candidate-list-dialog.component.ts
 
-    // job and candidate list autocomplete
-    if (this.data?.job?.jobId == null || this.data?.job?.jobId == undefined) {
-      this.jobAc$ = this.jobAcControl.valueChanges.pipe(
-        startWith(''),
-        // delay emits
-        debounceTime(300),
-        // use switch map so as to cancel previous subscribed events, before creating new once
-        switchMap((value) => {
-          if (value !== '') {
-            if (value?.jobTitle) {
-              return of(null);
-            }
+import { Component, Inject, OnInit } from '@angular/core';
+import {
+  AbstractControl,
+  FormBuilder,
+  FormGroup,
+  Validators,
+} from '@angular/forms';
+import { MatDialog,MatDialogRef } from '@angular/material/dialog';
+import { AuthService } from '../../services/auth.service';
 
-            return this.jobLookup(value);
-          } else {
-            // if no value is present, return null
-            return this.jobLookup('');
-          }
-        })
-      );
+@Component({
+  selector: 'app-download-candidate-list-dialog',
+  templateUrl: './download-candidate-list-dialog.component.html',
+  styleUrls: ['./download-candidate-list-dialog.component.scss'],
+})
+export class DownloadCandidateListDialogComponent implements OnInit {
+  form: FormGroup;
+  get f(): { [key: string]: AbstractControl } {
+    return this.form.controls;
+  }
+  min = new Date();
+  timingList: any = [];
+  constructor(
+    private fb: FormBuilder,
+    private dialogRef: MatDialogRef<DownloadCandidateListDialogComponent>,
+    public dialog: MatDialog,
+    public authService: AuthService
+  ) {
+    console.log('Inside dialog');
+  }
+
+  ngOnInit(): void {
+    this.initForm();
+  }
+
+  closeModal() {
+    this.dialogRef.close();
+  }
+  onDateChange(event: any) {
+    console.log('on date change', event);
+  }
+
+  initForm() {
+    this.form = this.fb.group({
+      startDate: [''],
+      endDate: [''],
+    });
+  }
+
+  onSubmit() {
+    console.log('THE FORM VALUE', this.form.value);
+    const startDate = this.form.value.startDate;
+    const endDate = this.form.value.endDate;
+
+    let params: any = {};
+
+    if (startDate) {
+      params.startDate = new Date(startDate).toISOString().split('T')[0]; // Format as 'YYYY-MM-DD'
+    }
+    if (endDate) {
+      params.endDate = new Date(endDate).toISOString().split('T')[0]; // Format as 'YYYY-MM-DD'
     }
 
-    this.applicationAc$ = this.applicationAcControl.valueChanges.pipe(
-      startWith(''),
-      debounceTime(300),
-      switchMap((value) => {
-        if (value !== '') {
-          if (value?.name) {
-            return of(null);
-          }
+    this.authService.downloadDetails(params).subscribe(
+      (response: any) => {
+        const downloadUrl = window.URL.createObjectURL(response);
 
-          return this.applicationLookup(value);
-        } else {
-          // if no value is present, return null
-          return this.applicationLookup('');
-        }
-      })
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = 'candidate_applications.csv';
+        a.click();
+        document.body.removeChild(a);
+
+        window.URL.revokeObjectURL(downloadUrl);
+        console.log('file downloaded', downloadUrl);
+      },
+      (error) => {
+        console.error('Error downloading file', error);
+      }
     );
   }
+}
+
+download-candidate-list-dialog.component.html
+
+<div class="event-edit-modal">
+  <div class="event-edit-header">
+    <h5 class="heading-text">Candidate Details Download</h5>
+    <app-icon icon="close" (click)="closeModal()"></app-icon>
+  </div>
+  <form class="form-item" [formGroup]="form" (ngSubmit)="onSubmit()">
+    <div class="event-edit-body">
+      <div class="resume-upload">
+        <div class="row">
+          <div class="col-lg-12 col-sm-12">
+            <div class="form-group form-inner">
+              <label class="form-label" for="experiencedPeriod"
+                >Start Date
+              </label>
+              <div class="form-datepicker form-datepicker-custom">
+                <input
+                  (dateChange)="onDateChange($event)"
+                  placeholder="Choose a date"
+                  formControlName="startDate"
+                  readonly
+                  class="form-control"
+                  id="startPicker"
+                  [matDatepicker]="startPicker"
+                />
+                <mat-datepicker-toggle
+                  matIconSuffix
+                  [for]="startPicker"
+                ></mat-datepicker-toggle>
+              </div>
+              <mat-datepicker #startPicker></mat-datepicker>
+            </div>
+          </div>
+          <div class="col-lg-12 col-sm-12">
+            <div class="form-group form-inner">
+              <label class="form-label" for="experiencedPeriod"
+                >End Date
+              </label>
+              <div class="form-datepicker form-datepicker-custom">
+                <input
+                  (dateChange)="onDateChange($event)"
+                  placeholder="Choose a date"
+                  formControlName="endDate"
+                  readonly
+                  class="form-control"
+                  id="endPicker"
+                  [matDatepicker]="endPicker"
+                />
+                <mat-datepicker-toggle
+                  matIconSuffix
+                  [for]="endPicker"
+                ></mat-datepicker-toggle>
+              </div>
+              <mat-datepicker #endPicker></mat-datepicker>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="event-edit-footer">
+      <div class="row justify-content-end">
+        <div class="col-lg-3 col-6">
+          <button
+            type="button"
+            (click)="closeModal()"
+            class="ags-outline-btn ags-hxl56 ags-padding1624 btn-font16"
+          >
+            Cancel
+          </button>
+        </div>
+        <div class="col-lg-5 col-6">
+          <button
+            type="submit"
+            class="ags-primary-btn ags-hxl56 ags-padding1624 btn-font16"
+          >
+            Download Candidate List
+          </button>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+
